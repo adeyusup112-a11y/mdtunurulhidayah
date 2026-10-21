@@ -1,0 +1,6 @@
+{
+  "name": "MDTU Nurul Hidayah",
+  "description": "Sistem Informasi Terintegrasi dan Portal Akademik MDTU Nurul Hidayah Rajadesa Ciamis",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
