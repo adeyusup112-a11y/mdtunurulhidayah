@@ -212,7 +212,7 @@ export const PortalGatewayPage: React.FC<PortalGatewayPageProps> = ({
                   selectedRole === 'parent' ? 'text-emerald-100' : 'text-stone-500'
                 }`}
               >
-                Tersedia untuk 40 akun wali santri untuk memantau kehadiran, nilai hafalan, tagihan SPP, dan kuitansi.
+                Tersedia untuk 60 akun wali santri untuk memantau kehadiran, nilai hafalan, tagihan SPP, dan kuitansi.
               </p>
             </div>
           </div>

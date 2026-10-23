@@ -19,6 +19,9 @@ import {
   SiteSettings,
   ContactMessage,
   ActivityLog,
+  SubjectGrade,
+  DigitalReportCard,
+  DatabaseState
 } from '../types';
 
 export const INITIAL_SITE_SETTINGS: SiteSettings = {
@@ -61,14 +64,14 @@ export const INITIAL_SITE_SETTINGS: SiteSettings = {
     'MDTU Nurul Hidayah didirikan sebagai ikhtiar luhur para tokoh agama dan masyarakat di Kp. Dukuh Sari, Dusun Cigoong, Desa Sirnabaya, Kecamatan Rajadesa, Kabupaten Ciamis, untuk menyediakan wadah pembinaan keagamaan formal sore hari bagi anak-anak usia sekolah dasar. Dengan mengintegrasikan kurikulum Kementerian Agama Republik Indonesia dan tradisi diniyah yang mengedepankan pembiasaan ibadah praktis, madrasah terus berkhidmah mencetak santri-santri yang berkarakter islami.',
   bankAccounts: [
     {
-      bankName: 'Bank BRI (Simpedes)',
-      accountNumber: '4182-01-023948-53-1',
-      accountHolder: 'MDTU NURUL HIDAYAH'
+      bankName: 'DANA (Dompet Digital)',
+      accountNumber: '081324168105',
+      accountHolder: 'Azmi M Nurjamil'
     },
     {
-      bankName: 'Bank BSI (Syariah)',
-      accountNumber: '7218391045',
-      accountHolder: 'MDTU NURUL HIDAYAH'
+      bankName: 'Bank BRI',
+      accountNumber: '4056 0101 3846 503',
+      accountHolder: 'MDTU Nurul Hidayah'
     }
   ],
   ppdbActive: true,
@@ -78,14 +81,16 @@ export const INITIAL_SITE_SETTINGS: SiteSettings = {
     'Menyerahkan fotokopi Kartu Keluarga (KK) (1 lembar)',
     'Menyerahkan fotokopi KTP orang tua/wali santri (1 lembar)',
     'Pas foto berwarna santri ukuran 3x4 (2 lembar)'
-  ]
+  ],
+  studyHours: 'Hari Senin - Minggu pukul 13.00 - 16.00 WIB (Jumat Libur)',
+  monthlySppAmount: 25000
 };
 
 export const INITIAL_CLASSES: ClassItem[] = [
-  { id: 'class_1', name: 'Kelas 1 (Ula A)', academicYear: '2025/2026', teacherId: 'teacher_2', roomName: 'Ruang Utsman bin Affan', studentCount: 10 },
-  { id: 'class_2', name: 'Kelas 2 (Ula B)', academicYear: '2025/2026', teacherId: 'teacher_3', roomName: 'Ruang Ali bin Abi Thalib', studentCount: 10 },
-  { id: 'class_3', name: 'Kelas 3 (Ula C)', academicYear: '2025/2026', teacherId: 'teacher_4', roomName: 'Ruang Umar bin Khattab', studentCount: 10 },
-  { id: 'class_4', name: 'Kelas 4 (Ula D)', academicYear: '2025/2026', teacherId: 'teacher_1', roomName: 'Ruang Abu Bakar Ash-Shiddiq', studentCount: 10 }
+  { id: 'class_1', name: 'Kelas 1 (Ula A)', academicYear: '2025/2026', teacherId: 'teacher_2', roomName: 'Ruang Utsman bin Affan', studentCount: 15 },
+  { id: 'class_2', name: 'Kelas 2 (Ula B)', academicYear: '2025/2026', teacherId: 'teacher_3', roomName: 'Ruang Ali bin Abi Thalib', studentCount: 15 },
+  { id: 'class_3', name: 'Kelas 3 (Ula C)', academicYear: '2025/2026', teacherId: 'teacher_4', roomName: 'Ruang Umar bin Khattab', studentCount: 15 },
+  { id: 'class_4', name: 'Kelas 4 (Ula D)', academicYear: '2025/2026', teacherId: 'teacher_1', roomName: 'Ruang Abu Bakar Ash-Shiddiq', studentCount: 15 }
 ];
 
 export const INITIAL_TEACHERS: TeacherProfile[] = [
@@ -175,9 +180,9 @@ export const INITIAL_TEACHERS: TeacherProfile[] = [
   }
 ];
 
-// Student & Parent names list for 40 pairs
+// Student & Parent names list for 60 pairs (15 santri x 4 kelas)
 const RAW_STUDENT_NAMES = [
-  // Kelas 1 (10 santri)
+  // Kelas 1 (15 santri)
   { name: 'Muhammad Al-Fatih', gender: 'L', classId: 'class_1', parentName: 'Bapak Ahmad Sobari', phone: '081234567801' },
   { name: 'Aisyah Humaira', gender: 'P', classId: 'class_1', parentName: 'Ibu Enok Rohayati', phone: '081234567802' },
   { name: 'Bilal Habasyi', gender: 'L', classId: 'class_1', parentName: 'Bapak Dedi Kusnadi', phone: '081234567803' },
@@ -188,8 +193,13 @@ const RAW_STUDENT_NAMES = [
   { name: 'Khadijah Al-Kubra', gender: 'P', classId: 'class_1', parentName: 'Ibu Kokom Komalasari', phone: '081234567808' },
   { name: 'Hasan Ali Al-Husain', gender: 'L', classId: 'class_1', parentName: 'Bapak Agus Setiawan', phone: '081234567809' },
   { name: 'Zahra Syahirah', gender: 'P', classId: 'class_1', parentName: 'Ibu Siti Munawaroh', phone: '081234567810' },
+  { name: 'Ziyad Abdullah', gender: 'L', classId: 'class_1', parentName: 'Bapak Endang Hidayat', phone: '081234567841' },
+  { name: 'Halimah As-Sa\'diyah', gender: 'P', classId: 'class_1', parentName: 'Ibu Elis Rosidah', phone: '081234567842' },
+  { name: 'Luqman Al-Hakim', gender: 'L', classId: 'class_1', parentName: 'Bapak Yudi Mulyadi', phone: '081234567843' },
+  { name: 'Salwa Nur Salsabila', gender: 'P', classId: 'class_1', parentName: 'Ibu Imas Rodiah', phone: '081234567844' },
+  { name: 'Yahya Zakariya', gender: 'L', classId: 'class_1', parentName: 'Bapak Tatang Rohimat', phone: '081234567845' },
 
-  // Kelas 2 (10 santri)
+  // Kelas 2 (15 santri)
   { name: 'Hamzah Asadullah', gender: 'L', classId: 'class_2', parentName: 'Bapak Cecep Hidayat', phone: '081234567811' },
   { name: 'Safiyyah binti Huyay', gender: 'P', classId: 'class_2', parentName: 'Ibu Cucu Rohimah', phone: '081234567812' },
   { name: 'Umar Faruq', gender: 'L', classId: 'class_2', parentName: 'Bapak Tatang Sutisna', phone: '081234567813' },
@@ -200,8 +210,13 @@ const RAW_STUDENT_NAMES = [
   { name: 'Hafshah binti Umar', gender: 'P', classId: 'class_2', parentName: 'Ibu Entin Supriatin', phone: '081234567818' },
   { name: 'Thariq bin Ziyad', gender: 'L', classId: 'class_2', parentName: 'Bapak Wawan Kurniawan', phone: '081234567819' },
   { name: 'Asma binti Abu Bakar', gender: 'P', classId: 'class_2', parentName: 'Ibu Lilis Suryani', phone: '081234567820' },
+  { name: 'Harun Al-Rasyid', gender: 'L', classId: 'class_2', parentName: 'Bapak Budi Gunawan', phone: '081234567846' },
+  { name: 'Qanita Mumtazah', gender: 'P', classId: 'class_2', parentName: 'Ibu Nur Aisyah', phone: '081234567847' },
+  { name: 'Ilyas Nurul Anwar', gender: 'L', classId: 'class_2', parentName: 'Bapak Rahmat Hidayat', phone: '081234567848' },
+  { name: 'Syahla Syahidah', gender: 'P', classId: 'class_2', parentName: 'Ibu Yani Maryani', phone: '081234567849' },
+  { name: 'Ammar bin Yasir', gender: 'L', classId: 'class_2', parentName: 'Bapak Kusnadi', phone: '081234567850' },
 
-  // Kelas 3 (10 santri)
+  // Kelas 3 (15 santri)
   { name: 'Salman Al-Farisi', gender: 'L', classId: 'class_3', parentName: 'Bapak Endang Komara', phone: '081234567821' },
   { name: 'Juwaidiyah Al-Khoir', gender: 'P', classId: 'class_3', parentName: 'Ibu Nunung Nurjanah', phone: '081234567822' },
   { name: 'Khalid bin Walid', gender: 'L', classId: 'class_3', parentName: 'Bapak Asep Saepudin', phone: '081234567823' },
@@ -212,8 +227,13 @@ const RAW_STUDENT_NAMES = [
   { name: 'Athiyyah Ramadhani', gender: 'P', classId: 'class_3', parentName: 'Ibu Yanti Maryanti', phone: '081234567828' },
   { name: 'Zubair bin Awwam', gender: 'L', classId: 'class_3', parentName: 'Bapak Oding Suhendar', phone: '081234567829' },
   { name: 'Najma Salsabila', gender: 'P', classId: 'class_3', parentName: 'Ibu Rina Marlina', phone: '081234567830' },
+  { name: 'Mu\'adz bin Jabal', gender: 'L', classId: 'class_3', parentName: 'Bapak Aceng Kurnia', phone: '081234567851' },
+  { name: 'Syakira Nur Fadhilah', gender: 'P', classId: 'class_3', parentName: 'Ibu Neni Triana', phone: '081234567852' },
+  { name: 'Hudzaifah Al-Yamani', gender: 'L', classId: 'class_3', parentName: 'Bapak Dani Ramdani', phone: '081234567853' },
+  { name: 'Wardah Maulida', gender: 'P', classId: 'class_3', parentName: 'Ibu Yanti Rosmiati', phone: '081234567854' },
+  { name: 'Usamah bin Zaid', gender: 'L', classId: 'class_3', parentName: 'Bapak Aang Suhanda', phone: '081234567855' },
 
-  // Kelas 4 (10 santri)
+  // Kelas 4 (15 santri)
   { name: 'Faqih Rahmatullah', gender: 'L', classId: 'class_4', parentName: 'Bapak Dudung Abdullah', phone: '081234567831' },
   { name: 'Naila Fauziyyah', gender: 'P', classId: 'class_4', parentName: 'Ibu Teti Rohaeti', phone: '081234567832' },
   { name: 'Rizki Nurhidayat', gender: 'L', classId: 'class_4', parentName: 'Bapak Dadang Mulyadi', phone: '081234567833' },
@@ -223,7 +243,12 @@ const RAW_STUDENT_NAMES = [
   { name: 'Farhan Maulana', gender: 'L', classId: 'class_4', parentName: 'Bapak Ujang Kosasih', phone: '081234567837' },
   { name: 'Dina Kamila', gender: 'P', classId: 'class_4', parentName: 'Ibu Ema Rahmawati', phone: '081234567838' },
   { name: 'Rayhan Al-Ghifari', gender: 'L', classId: 'class_4', parentName: 'Bapak Solihin', phone: '081234567839' },
-  { name: 'Hilya Aulia Rahmah', gender: 'P', classId: 'class_4', parentName: 'Ibu Yuyun Wahyuni', phone: '081234567840' }
+  { name: 'Hilya Aulia Rahmah', gender: 'P', classId: 'class_4', parentName: 'Ibu Yuyun Wahyuni', phone: '081234567840' },
+  { name: 'Fakhri Musyaffa', gender: 'L', classId: 'class_4', parentName: 'Bapak Eman Sulaeman', phone: '081234567856' },
+  { name: 'Atikah binti Zaid', gender: 'P', classId: 'class_4', parentName: 'Ibu Eni Rohaeni', phone: '081234567857' },
+  { name: 'Miqdad bin Amr', gender: 'L', classId: 'class_4', parentName: 'Bapak Ikin Sadikin', phone: '081234567858' },
+  { name: 'Raihanah binti Zaid', gender: 'P', classId: 'class_4', parentName: 'Ibu Ai Jamilah', phone: '081234567859' },
+  { name: 'Sholahuddin Al-Ayyubi', gender: 'L', classId: 'class_4', parentName: 'Bapak Anwar Sanusi', phone: '081234567860' }
 ] as const;
 
 export function generateInitialUsersAndEntities() {
@@ -553,24 +578,156 @@ export function generateInitialGrades(students: Student[]): AcademicNote[] {
 }
 
 export const INITIAL_SCHEDULES: ScheduleItem[] = [
-  // Kelas 1
-  { id: 'sch_1_1', classId: 'class_1', day: 'Senin', timeSlot: '14:00 - 15:00', subject: 'Iqro & Tahsin Al-Qur\'an', teacherId: 'teacher_2' },
-  { id: 'sch_1_2', classId: 'class_1', day: 'Senin', timeSlot: '15:15 - 16:15', subject: 'Praktek Sholat & Doa', teacherId: 'teacher_2' },
-  { id: 'sch_1_3', classId: 'class_1', day: 'Selasa', timeSlot: '14:00 - 15:00', subject: 'Aqidah Dasar Santri', teacherId: 'teacher_2' },
-  { id: 'sch_1_4', classId: 'class_1', day: 'Rabu', timeSlot: '14:00 - 15:00', subject: 'Kisah 25 Nabi & Rasul', teacherId: 'teacher_2' },
-  // Kelas 2
-  { id: 'sch_2_1', classId: 'class_2', day: 'Senin', timeSlot: '14:00 - 15:00', subject: 'Tajwid Dasar & Tahfidz Juz 30', teacherId: 'teacher_3' },
-  { id: 'sch_2_2', classId: 'class_2', day: 'Selasa', timeSlot: '14:00 - 15:00', subject: 'Bahasa Arab Mufrodat', teacherId: 'teacher_3' },
-  { id: 'sch_2_3', classId: 'class_2', day: 'Rabu', timeSlot: '14:00 - 15:00', subject: 'Fiqih Thoharoh & Wudhu', teacherId: 'teacher_3' },
-  // Kelas 3
-  { id: 'sch_3_1', classId: 'class_3', day: 'Senin', timeSlot: '14:00 - 15:00', subject: 'Fiqih Safinatun Najah', teacherId: 'teacher_4' },
-  { id: 'sch_3_2', classId: 'class_3', day: 'Selasa', timeSlot: '14:00 - 15:00', subject: 'Tajwid Tuhfatul Athfal', teacherId: 'teacher_4' },
-  { id: 'sch_3_3', classId: 'class_3', day: 'Jumat', timeSlot: '14:00 - 15:30', subject: 'Pramuka Santri & Latihan Baris', teacherId: 'teacher_4' },
-  // Kelas 4
-  { id: 'sch_4_1', classId: 'class_4', day: 'Senin', timeSlot: '14:00 - 15:00', subject: 'Fiqih Ibadah Lanjutan', teacherId: 'teacher_1' },
-  { id: 'sch_4_2', classId: 'class_4', day: 'Rabu', timeSlot: '14:00 - 15:00', subject: 'Al-Qur\'an Hadits & Terjemah', teacherId: 'teacher_1' },
-  { id: 'sch_4_3', classId: 'class_4', day: 'Kamis', timeSlot: '14:00 - 15:00', subject: 'Tarikh Islam & Khulafaur Rasyidin', teacherId: 'teacher_1' }
+  // Kelas 1 (Wali Kelas: Usth. Siti Saadah, S.Pd.)
+  { id: 'sch_1_1', classId: 'class_1', day: 'Senin', timeSlot: '13:00 - 14:15 WIB', subject: 'Iqro & Tahsin Al-Qur\'an', teacherId: 'teacher_2' },
+  { id: 'sch_1_2', classId: 'class_1', day: 'Senin', timeSlot: '14:30 - 15:45 WIB', subject: 'Praktik Shalat & Doa Harian', teacherId: 'teacher_2' },
+  { id: 'sch_1_3', classId: 'class_1', day: 'Selasa', timeSlot: '13:00 - 14:30 WIB', subject: 'Aqidah Dasar Santri', teacherId: 'teacher_2' },
+  { id: 'sch_1_4', classId: 'class_1', day: 'Rabu', timeSlot: '13:00 - 14:30 WIB', subject: 'Kisah 25 Nabi & Rasul', teacherId: 'teacher_2' },
+  { id: 'sch_1_5', classId: 'class_1', day: 'Kamis', timeSlot: '13:00 - 14:30 WIB', subject: 'Adab & Akhlak Santri', teacherId: 'teacher_2' },
+  { id: 'sch_1_6', classId: 'class_1', day: 'Sabtu', timeSlot: '13:00 - 14:30 WIB', subject: 'Tahfidz Surat Pendek (Juz Amma)', teacherId: 'teacher_2' },
+  { id: 'sch_1_7', classId: 'class_1', day: 'Minggu', timeSlot: '13:00 - 15:00 WIB', subject: 'Belajar Huruf Hijaiyah & Mewarnai Kaligrafi', teacherId: 'teacher_2' },
+
+  // Kelas 2 (Wali Kelas: Usth. Fitri Hermawati)
+  { id: 'sch_2_1', classId: 'class_2', day: 'Senin', timeSlot: '13:00 - 14:15 WIB', subject: 'Tajwid Dasar & Tahfidz Juz 30', teacherId: 'teacher_3' },
+  { id: 'sch_2_2', classId: 'class_2', day: 'Selasa', timeSlot: '13:00 - 14:15 WIB', subject: 'Bahasa Arab Mufrodat', teacherId: 'teacher_3' },
+  { id: 'sch_2_3', classId: 'class_2', day: 'Rabu', timeSlot: '13:00 - 14:15 WIB', subject: 'Fiqih Thoharoh & Wudhu', teacherId: 'teacher_3' },
+  { id: 'sch_2_4', classId: 'class_2', day: 'Kamis', timeSlot: '13:00 - 14:30 WIB', subject: 'Akhlak Lil Banin / Banat', teacherId: 'teacher_3' },
+  { id: 'sch_2_5', classId: 'class_2', day: 'Sabtu', timeSlot: '13:00 - 14:30 WIB', subject: 'Muroja\'ah Surat An-Nas s.d Ad-Dhuha', teacherId: 'teacher_3' },
+  { id: 'sch_2_6', classId: 'class_2', day: 'Minggu', timeSlot: '13:00 - 15:00 WIB', subject: 'Praktik Ibadah & Doa Sehari-hari', teacherId: 'teacher_3' },
+
+  // Kelas 3 (Wali Kelas: Ust. Azmi M Nurjamil)
+  { id: 'sch_3_1', classId: 'class_3', day: 'Senin', timeSlot: '13:00 - 14:15 WIB', subject: 'Fiqih Safinatun Najah', teacherId: 'teacher_4' },
+  { id: 'sch_3_2', classId: 'class_3', day: 'Selasa', timeSlot: '13:00 - 14:15 WIB', subject: 'Tajwid Tuhfatul Athfal', teacherId: 'teacher_4' },
+  { id: 'sch_3_3', classId: 'class_3', day: 'Rabu', timeSlot: '13:00 - 14:15 WIB', subject: 'Bahasa Arab Dasar', teacherId: 'teacher_4' },
+  { id: 'sch_3_4', classId: 'class_3', day: 'Kamis', timeSlot: '13:00 - 14:30 WIB', subject: 'Tarikh Islam & Sirah Nabawiyah', teacherId: 'teacher_4' },
+  { id: 'sch_3_5', classId: 'class_3', day: 'Sabtu', timeSlot: '13:00 - 14:30 WIB', subject: 'Tahfidz Al-Fajr s.d An-Naba', teacherId: 'teacher_4' },
+  { id: 'sch_3_6', classId: 'class_3', day: 'Minggu', timeSlot: '13:00 - 15:30 WIB', subject: 'Pramuka Santri & Kesenian Hadroh', teacherId: 'teacher_4' },
+
+  // Kelas 4 (Wali Kelas: Ust. Ade Yusup, S.Pd.)
+  { id: 'sch_4_1', classId: 'class_4', day: 'Senin', timeSlot: '13:00 - 14:15 WIB', subject: 'Fiqih Ibadah & Muamalah Lanjutan', teacherId: 'teacher_1' },
+  { id: 'sch_4_2', classId: 'class_4', day: 'Selasa', timeSlot: '13:00 - 14:15 WIB', subject: 'Aqidah Akhlak & Penguatan Tauhid', teacherId: 'teacher_1' },
+  { id: 'sch_4_3', classId: 'class_4', day: 'Rabu', timeSlot: '13:00 - 14:15 WIB', subject: 'Al-Qur\'an Hadits & Terjemah Pilihan', teacherId: 'teacher_1' },
+  { id: 'sch_4_4', classId: 'class_4', day: 'Kamis', timeSlot: '13:00 - 14:30 WIB', subject: 'Tarikh Khulafaur Rasyidin & Sahabat', teacherId: 'teacher_1' },
+  { id: 'sch_4_5', classId: 'class_4', day: 'Sabtu', timeSlot: '13:00 - 14:30 WIB', subject: 'Tahfidz Mandiri Juz 30 & Surat Al-Mulk', teacherId: 'teacher_1' },
+  { id: 'sch_4_6', classId: 'class_4', day: 'Minggu', timeSlot: '13:00 - 15:30 WIB', subject: 'Khitobah & Latihan Pidato Santri', teacherId: 'teacher_1' }
 ];
+
+export function generateInitialReportCards(students: Student[], teachers: TeacherProfile[]): DigitalReportCard[] {
+  const reports: DigitalReportCard[] = [];
+
+  const defaultSubjects = [
+    { subject: 'Al-Qur\'an & Tahsin', kkm: 75 },
+    { subject: 'Tajwid & Tahfidz Juz 30', kkm: 75 },
+    { subject: 'Fiqih Ibadah & Praktik Shalat', kkm: 75 },
+    { subject: 'Aqidah & Akhlakul Karimah', kkm: 75 },
+    { subject: 'Bahasa Arab & Mufrodat', kkm: 70 },
+    { subject: 'Tarikh Islam (Sejarah Kebudayaan Islam)', kkm: 70 },
+    { subject: 'Hadits Pilihan & Doa Harian', kkm: 75 }
+  ];
+
+  students.forEach((student, idx) => {
+    // Generate realistic authentic marks based on student index
+    const baseScore = 80 + ((idx * 7) % 18); // range 80 - 97
+    const grades: SubjectGrade[] = defaultSubjects.map((sub, sIdx) => {
+      const variation = ((idx + sIdx) % 5) - 2;
+      const score = Math.min(98, Math.max(76, baseScore + variation));
+      let gradeLetter: 'A' | 'B' | 'C' | 'D' = 'B';
+      let predicate: 'Sangat Baik' | 'Baik' | 'Cukup' | 'Perlu Bimbingan' = 'Baik';
+
+      if (score >= 88) {
+        gradeLetter = 'A';
+        predicate = 'Sangat Baik';
+      } else if (score >= 78) {
+        gradeLetter = 'B';
+        predicate = 'Baik';
+      } else if (score >= 68) {
+        gradeLetter = 'C';
+        predicate = 'Cukup';
+      } else {
+        gradeLetter = 'D';
+        predicate = 'Perlu Bimbingan';
+      }
+
+      let description = `Mampu menguasai materi ${sub.subject} dengan ${predicate.toLowerCase()} dan tekun.`;
+      if (sub.subject.includes('Al-Qur\'an')) {
+        description = 'Fasih membaca Al-Qur\'an dengan makharijul huruf tepat dan tajwid tertib.';
+      } else if (sub.subject.includes('Tahfidz')) {
+        description = 'Hafalan surat mutqin, lancar muroja\'ah dan tartil.';
+      } else if (sub.subject.includes('Fiqih')) {
+        description = 'Memahami rukun, syarat sah shalat dan thoharoh serta mempraktikkannya.';
+      } else if (sub.subject.includes('Akhlak')) {
+        description = 'Menunjukkan adab sopan santun kepada guru dan menyayangi sesama santri.';
+      }
+
+      return {
+        subject: sub.subject,
+        kkm: sub.kkm,
+        score,
+        gradeLetter,
+        predicate,
+        description
+      };
+    });
+
+    const waliKelasMap: Record<string, string> = {
+      class_1: 'Usth. Siti Saadah, S.Pd.',
+      class_2: 'Usth. Fitri Hermawati',
+      class_3: 'Ust. Azmi M Nurjamil',
+      class_4: 'Ust. Ade Yusup, S.Pd.'
+    };
+
+    const promotionStatus = student.classId === 'class_4'
+      ? 'Lulus dari MDTU Nurul Hidayah'
+      : 'Naik ke Kelas Berikutnya';
+
+    const nextClassMap: Record<string, string> = {
+      class_1: 'Kelas 2 (Ula B)',
+      class_2: 'Kelas 3 (Ula C)',
+      class_3: 'Kelas 4 (Ula D)',
+      class_4: 'Alumni / Lulus Pendidikan MDTU'
+    };
+
+    reports.push({
+      id: `report_${student.id}_genap_2026`,
+      studentId: student.id,
+      classId: student.classId,
+      academicYear: '2025/2026',
+      semester: 'Genap',
+      issueDate: '2026-06-20',
+      place: 'Rajadesa',
+      grades,
+      tahfidzProgress: student.classId === 'class_1' ? 'Juz 30 (Surat An-Nas s.d Al-Fiil)' :
+        student.classId === 'class_2' ? 'Juz 30 (Surat An-Nas s.d Ad-Dhuha)' :
+        student.classId === 'class_3' ? 'Juz 30 (Surat An-Nas s.d Al-Fajr)' :
+        'Juz 30 Lengkap (An-Naba s.d An-Nas) & Surat Al-Mulk',
+      tahfidzScore: Math.min(99, baseScore + 2),
+      tahfidzPredicate: baseScore >= 88 ? 'Mumtaz (Istimewa)' : 'Jayyid Jiddan (Sangat Baik)',
+      tajwidQuality: 'Makharijul huruf tartil, harakat dan mad terkontrol dengan baik.',
+      characterValues: {
+        adabDanAkhlak: 'A',
+        kedisiplinan: 'A',
+        kebersihanKerapian: baseScore > 85 ? 'A' : 'B',
+        keaktifanIbadah: 'A'
+      },
+      attendance: {
+        hadir: 88 + (idx % 6),
+        sakit: (idx % 3),
+        izin: (idx % 2),
+        alpa: 0
+      },
+      teacherNotes: 'Alhamdulillah, ananda menunjukkan kesungguhan belajar, akhlak yang santun, dan peningkatan hafalan Al-Qur\'an yang membanggakan. Pertahankan kebiasaan shalat berjamaah dan muroja\'ah di rumah.',
+      promotionStatus,
+      promotedToClass: nextClassMap[student.classId] || 'Kelas Lanjutan',
+      headmasterName: 'Ust. Ade Yusup, S.Pd.',
+      headmasterTitle: 'Kepala MDTU Nurul Hidayah',
+      waliKelasName: waliKelasMap[student.classId] || 'Ust. Ade Yusup, S.Pd.',
+      updatedAt: '2026-06-20T10:00:00Z',
+      updatedBy: 'Ust. Ade Yusup, S.Pd.'
+    });
+  });
+
+  return reports;
+}
 
 export const INITIAL_NEWS: NewsItem[] = [
   {
@@ -787,3 +944,35 @@ export const INITIAL_ACTIVITY_LOGS: ActivityLog[] = [
     timestamp: '2026-05-20T10:15:00Z'
   }
 ];
+
+export function createDefaultDatabaseState(): DatabaseState {
+  const { users, parents, students } = generateInitialUsersAndEntities();
+  const { bills, reports, receipts, auditLogs } = generateInitialBillsAndFinances(students, parents);
+  const attendance = generateInitialAttendance(students);
+  const academicNotes = generateInitialGrades(students);
+  const reportCards = generateInitialReportCards(students, INITIAL_TEACHERS);
+
+  return {
+    settings: INITIAL_SITE_SETTINGS,
+    users,
+    teachers: INITIAL_TEACHERS,
+    parents,
+    students,
+    classes: INITIAL_CLASSES,
+    attendance,
+    academicNotes,
+    schedules: INITIAL_SCHEDULES,
+    news: INITIAL_NEWS,
+    announcements: INITIAL_ANNOUNCEMENTS,
+    admissions: INITIAL_ADMISSIONS,
+    gallery: INITIAL_GALLERY,
+    paymentTypes: INITIAL_PAYMENT_TYPES,
+    bills,
+    paymentReports: reports,
+    receipts,
+    paymentAuditLogs: auditLogs,
+    contactMessages: INITIAL_CONTACT_MESSAGES,
+    activityLogs: INITIAL_ACTIVITY_LOGS,
+    reportCards
+  };
+}

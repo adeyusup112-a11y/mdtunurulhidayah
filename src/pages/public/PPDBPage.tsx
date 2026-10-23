@@ -427,7 +427,7 @@ export const PPDBPage: React.FC<PPDBPageProps> = ({ settings, onRefreshData }) =
 
             <div className="bg-stone-50 rounded-xl border border-stone-200 p-6 space-y-2 text-xs text-stone-600">
               <span className="font-bold text-stone-900 block">Butuh Bantuan Pendaftaran?</span>
-              <p>Sekretariat panitia PPDB buka setiap sore pukul 14:00 - 16:30 WIB.</p>
+              <p>Sekretariat panitia PPDB buka setiap sore pukul 13:00 - 16:00 WIB (Senin - Minggu, Jumat Libur).</p>
               <p className="font-mono text-emerald-900 font-bold">Telp: 0823-1598-7599</p>
             </div>
           </div>

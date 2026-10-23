@@ -20,10 +20,13 @@ import {
   PaymentAuditLog,
   SiteSettings,
   ContactMessage,
-  ActivityLog
+  ActivityLog,
+  DigitalReportCard
 } from '../../../types';
 import { ReceiptModal } from '../../../components/receipt/ReceiptModal';
 import { TeacherAvatar, CARTOON_AVATAR_OPTIONS } from '../../../components/common/TeacherAvatar';
+import { DigitalReportCardView } from '../../../components/raport/DigitalReportCardView';
+import { ReportCardEditorModal } from '../../../components/raport/ReportCardEditorModal';
 import {
   LayoutDashboard,
   Users,
@@ -31,6 +34,7 @@ import {
   School,
   CalendarCheck,
   Award,
+  FileCheck,
   Clock,
   Newspaper,
   Image as ImageIcon,
@@ -112,6 +116,10 @@ export const AdminDashboard: React.FC = () => {
   // Sub-forms: Student Edit / Add
   const [editingStudent, setEditingStudent] = useState<Partial<Student> | null>(null);
 
+  // Sub-forms: Parent Edit / Add
+  const [editingParent, setEditingParent] = useState<Partial<ParentProfile> | null>(null);
+  const [parentSearchTerm, setParentSearchTerm] = useState('');
+
   // Sub-forms: News Edit / Add
   const [editingNews, setEditingNews] = useState<Partial<NewsItem> | null>(null);
 
@@ -119,11 +127,34 @@ export const AdminDashboard: React.FC = () => {
   const [resettingUser, setResettingUser] = useState<{ id: string; name: string } | null>(null);
   const [adminNewPassword, setAdminNewPassword] = useState('');
 
+  // Sub-forms: Raport Digital states
+  const [reportCards, setReportCards] = useState<DigitalReportCard[]>([]);
+  const [editingReportCard, setEditingReportCard] = useState<{ report: DigitalReportCard; student: Student } | null>(null);
+  const [viewingReportCard, setViewingReportCard] = useState<{ report: DigitalReportCard; student: Student } | null>(null);
+  const [reportClassFilter, setReportClassFilter] = useState<string>('all');
+  const [reportSemesterFilter, setReportSemesterFilter] = useState<'Ganjil' | 'Genap'>('Genap');
+
+  // Sub-forms: Schedule Add / Edit
+  const [editingSchedule, setEditingSchedule] = useState<Partial<ScheduleItem> | null>(null);
+  const [scheduleClassFilter, setScheduleClassFilter] = useState<string>('all');
+
+  // Sub-forms: SPP Bulanan & Rekening Bank
+  const [sppNominalInput, setSppNominalInput] = useState<number>(25000);
+  const [updatePendingBillsWithSpp, setUpdatePendingBillsWithSpp] = useState<boolean>(false);
+  const [editingBankIndex, setEditingBankIndex] = useState<number | null>(null);
+  const [bankForm, setBankForm] = useState<{ bankName: string; accountNumber: string; accountHolder: string }>({
+    bankName: '',
+    accountNumber: '',
+    accountHolder: ''
+  });
+
   // Backup file input ref
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const loadAllData = () => {
-    setSettings(storageService.getSiteSettings());
+    const loadedSettings = storageService.getSiteSettings();
+    setSettings(loadedSettings);
+    setSppNominalInput(loadedSettings.monthlySppAmount || 25000);
     setTeachers(storageService.getTeachers(true));
     setStudents(storageService.getStudents());
     setParents(storageService.getParents());
@@ -131,6 +162,7 @@ export const AdminDashboard: React.FC = () => {
     setAttendance(storageService.getAttendance());
     setAcademicNotes(storageService.getAcademicNotes());
     setSchedules(storageService.getSchedules());
+    setReportCards(storageService.getReportCards());
     setNews(storageService.getNews());
     setAnnouncements(storageService.getAnnouncements());
     setAdmissions(storageService.getAdmissions());
@@ -271,18 +303,19 @@ export const AdminDashboard: React.FC = () => {
     { id: 'wali-kelas', label: '6. Pembagian Wali Kelas', icon: School },
     { id: 'absensi', label: '7. Monitoring Absensi', icon: CalendarCheck },
     { id: 'nilai', label: '8. Catatan Akademik', icon: Award },
-    { id: 'jadwal', label: '9. Jadwal Pelajaran', icon: Clock },
-    { id: 'berita', label: '10. Berita & Pengumuman', icon: Newspaper },
-    { id: 'galeri', label: '11. Galeri Kegiatan', icon: ImageIcon },
-    { id: 'ppdb', label: '12. Pendaftaran Santri Baru', icon: UserPlus },
-    { id: 'tagihan', label: '13. Tagihan Bulanan (SPP)', icon: CreditCard },
-    { id: 'laporan-keuangan', label: '14. Verifikasi & Laporan SPP', icon: FileSpreadsheet },
-    { id: 'manajemen-akun', label: '15. Manajemen Akun & Hak Akses', icon: KeyRound },
-    { id: 'profil-lembaga', label: '16. Profil Lembaga', icon: Building2 },
-    { id: 'pengaturan-web', label: '17. Pengaturan Website', icon: Settings },
-    { id: 'pesan', label: '18. Pesan Masuk', icon: MessageSquare },
-    { id: 'log', label: '19. Log Aktivitas', icon: Clock },
-    { id: 'keamanan', label: '20. Pengaturan Keamanan & Backup', icon: ShieldAlert },
+    { id: 'raport', label: '9. Raport Digital Santri', icon: FileCheck },
+    { id: 'jadwal', label: '10. Jadwal Pelajaran', icon: Clock },
+    { id: 'berita', label: '11. Berita & Pengumuman', icon: Newspaper },
+    { id: 'galeri', label: '12. Galeri Kegiatan', icon: ImageIcon },
+    { id: 'ppdb', label: '13. Pendaftaran Santri Baru', icon: UserPlus },
+    { id: 'tagihan', label: '14. Tagihan & Nominal SPP', icon: CreditCard },
+    { id: 'laporan-keuangan', label: '15. Verifikasi & Laporan SPP', icon: FileSpreadsheet },
+    { id: 'manajemen-akun', label: '16. Manajemen Akun & Hak Akses', icon: KeyRound },
+    { id: 'profil-lembaga', label: '17. Profil Lembaga', icon: Building2 },
+    { id: 'pengaturan-web', label: '18. Pengaturan Web & Rekening', icon: Settings },
+    { id: 'pesan', label: '19. Pesan Masuk', icon: MessageSquare },
+    { id: 'log', label: '20. Log Aktivitas', icon: Clock },
+    { id: 'keamanan', label: '21. Pengaturan Keamanan & Backup', icon: ShieldAlert },
   ];
 
   return (
@@ -295,7 +328,7 @@ export const AdminDashboard: React.FC = () => {
           </span>
           <h1 className="text-xl sm:text-2xl font-bold mt-1">Dashboard Admin MDTU Nurul Hidayah</h1>
           <p className="text-xs text-emerald-200">
-            Terhubung langsung ke database: 4 Guru · 40 Wali Santri · 40 Santri Terdaftar · 4 Kelas
+            Terhubung langsung ke database: {teachers.length} Guru · {parents.length} Wali Santri · {students.length} Santri Terdaftar · {classes.length} Kelas
           </p>
         </div>
 
@@ -596,9 +629,9 @@ export const AdminDashboard: React.FC = () => {
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-stone-100 pb-4">
                 <div>
-                  <h2 className="text-xl font-bold text-stone-900">Data Induk Santri (40 Siswa Terdaftar)</h2>
+                  <h2 className="text-xl font-bold text-stone-900">Data Induk Santri ({students.length} Siswa Terdaftar)</h2>
                   <p className="text-xs text-stone-500">
-                    Daftar seluruh santri aktif beserta nomor induk (NIS) dan tautan ke profil wali.
+                    Daftar seluruh santri aktif beserta nomor induk (NIS), rombel kelas, dan tautan ke profil wali.
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -620,12 +653,12 @@ export const AdminDashboard: React.FC = () => {
                         birthDate: '2019-01-01',
                         classId: 'class_1',
                         parentId: parents[0]?.id || 'parent_01',
-                        address: 'Kp. Dukuh Sari, Sirnabaya',
+                        address: 'Kp. Dukuh Sari, Dusun Cigoong RT 01 RW 01, Sirnabaya',
                         enrollmentYear: 2026,
                         status: 'Aktif'
                       })
                     }
-                    className="px-3 py-1.5 bg-emerald-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1"
+                    className="px-3 py-1.5 bg-emerald-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer hover:bg-emerald-900"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Tambah Santri</span>
@@ -660,16 +693,52 @@ export const AdminDashboard: React.FC = () => {
                             <td className="py-2.5 px-3 font-medium text-stone-700">{cls?.name}</td>
                             <td className="py-2.5 px-3 text-stone-600">{prt?.fullName || '-'}</td>
                             <td className="py-2.5 px-3">
-                              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-semibold text-[11px]">
+                              <span
+                                className={`px-2 py-0.5 rounded font-semibold text-[11px] ${
+                                  s.status === 'Aktif'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-stone-200 text-stone-600'
+                                }`}
+                              >
                                 {s.status}
                               </span>
                             </td>
-                            <td className="py-2.5 px-3 text-center space-x-2">
+                            <td className="py-2.5 px-3 text-center space-x-1.5 whitespace-nowrap">
                               <button
                                 onClick={() => setEditingStudent(s)}
-                                className="p-1 text-emerald-800 hover:bg-emerald-50 rounded"
+                                className="px-2 py-1 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 rounded cursor-pointer text-[11px] font-semibold inline-flex items-center gap-1"
+                                title="Edit Data Santri"
                               >
-                                <Edit2 className="w-4 h-4" />
+                                <Edit2 className="w-3.5 h-3.5" />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const newStatus = s.status === 'Aktif' ? 'Nonaktif' : 'Aktif';
+                                  storageService.saveStudent({ ...s, status: newStatus }, currentUser?.fullName || 'Admin');
+                                  showToast('success', `Status santri ${s.fullName} diubah menjadi ${newStatus}.`);
+                                }}
+                                className={`px-2 py-1 rounded cursor-pointer text-[11px] font-semibold inline-flex items-center gap-1 ${
+                                  s.status === 'Aktif'
+                                    ? 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+                                    : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                                }`}
+                                title={s.status === 'Aktif' ? 'Nonaktifkan' : 'Aktifkan Kembali'}
+                              >
+                                <span>{s.status === 'Aktif' ? 'Nonaktifkan' : 'Aktifkan'}</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (confirm(`YAKIN HAPUS PERMANEN santri "${s.fullName}" (NIS: ${s.nis})?\nData santri dan raport digitalnya akan dihapus sepenuhnya dari database.`)) {
+                                    storageService.deleteStudentPermanently(s.id, currentUser?.fullName || 'Admin');
+                                    showToast('success', `Data santri ${s.fullName} berhasil dihapus permanen.`);
+                                  }
+                                }}
+                                className="px-2 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded cursor-pointer text-[11px] font-semibold inline-flex items-center gap-1"
+                                title="Hapus Permanen Santri"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Hapus</span>
                               </button>
                             </td>
                           </tr>
@@ -684,11 +753,42 @@ export const AdminDashboard: React.FC = () => {
           {/* 4. Data Orang Tua / Wali */}
           {activeMenu === 'orangtua' && (
             <div className="space-y-6">
-              <div className="border-b border-stone-100 pb-4">
-                <h2 className="text-xl font-bold text-stone-900">Data Orang Tua / Wali Santri (40 Akun Terhubung)</h2>
-                <p className="text-xs text-stone-500">
-                  Setiap orang tua memiliki relasi privat ke santri kandungnya untuk keamanan mutlak data nilai dan tagihan.
-                </p>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-stone-100 pb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-stone-900">Data Orang Tua / Wali Santri ({parents.length} Akun Terdaftar)</h2>
+                  <p className="text-xs text-stone-500">
+                    Setiap akun wali santri memiliki relasi privat ke putra-putrinya untuk pemantauan nilai, absensi, dan tagihan SPP.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Cari wali, no HP, atau santri..."
+                    value={parentSearchTerm}
+                    onChange={(e) => setParentSearchTerm(e.target.value)}
+                    className="px-3 py-1.5 text-xs border border-stone-300 rounded-lg outline-none"
+                  />
+                  <button
+                    onClick={() => {
+                      const nextNum = String(parents.length + 1).padStart(2, '0');
+                      setEditingParent({
+                        id: `parent_${nextNum}`,
+                        userId: `user_parent_${nextNum}`,
+                        fullName: '',
+                        relationship: 'Ayah',
+                        phone: '08',
+                        address: 'Kp. Dukuh Sari, Dusun Cigoong, Desa Sirnabaya, Rajadesa',
+                        occupation: 'Wiraswasta',
+                        studentIds: [],
+                        isActive: true
+                      });
+                    }}
+                    className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Tambah Orang Tua</span>
+                  </button>
+                </div>
               </div>
 
               <div className="overflow-x-auto">
@@ -700,39 +800,95 @@ export const AdminDashboard: React.FC = () => {
                       <th className="py-2.5 px-3">Nomor Telepon / WhatsApp</th>
                       <th className="py-2.5 px-3">Alamat</th>
                       <th className="py-2.5 px-3">Santri Terhubung</th>
+                      <th className="py-2.5 px-3">Status</th>
                       <th className="py-2.5 px-3 text-center">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
-                    {parents.map((p) => {
-                      const linkedStudents = students.filter(s => p.studentIds.includes(s.id));
-                      return (
-                        <tr key={p.id} className="hover:bg-stone-50">
-                          <td className="py-2.5 px-3 font-bold text-stone-900">{p.fullName}</td>
-                          <td className="py-2.5 px-3 font-semibold text-stone-700">{p.relationship}</td>
-                          <td className="py-2.5 px-3 font-mono">{p.phone}</td>
-                          <td className="py-2.5 px-3 text-stone-600 truncate max-w-xs">{p.address}</td>
-                          <td className="py-2.5 px-3">
-                            {linkedStudents.map(s => (
-                              <span key={s.id} className="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-900 font-semibold rounded text-[11px] mr-1">
-                                {s.fullName} ({s.classId.replace('class_', 'K')})
+                    {parents
+                      .filter(p =>
+                        p.fullName.toLowerCase().includes(parentSearchTerm.toLowerCase()) ||
+                        p.phone.includes(parentSearchTerm) ||
+                        students.some(s => p.studentIds.includes(s.id) && s.fullName.toLowerCase().includes(parentSearchTerm.toLowerCase()))
+                      )
+                      .map((p) => {
+                        const linkedStudents = students.filter(s => p.studentIds.includes(s.id));
+                        return (
+                          <tr key={p.id} className="hover:bg-stone-50">
+                            <td className="py-2.5 px-3 font-bold text-stone-900">{p.fullName}</td>
+                            <td className="py-2.5 px-3 font-semibold text-stone-700">{p.relationship}</td>
+                            <td className="py-2.5 px-3 font-mono">{p.phone}</td>
+                            <td className="py-2.5 px-3 text-stone-600 truncate max-w-xs">{p.address}</td>
+                            <td className="py-2.5 px-3">
+                              {linkedStudents.map(s => (
+                                <span key={s.id} className="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-900 font-semibold rounded text-[11px] mr-1">
+                                  {s.fullName} ({s.classId.replace('class_', 'K')})
+                                </span>
+                              ))}
+                              {linkedStudents.length === 0 && (
+                                <span className="text-stone-400 italic text-[11px]">Belum dihubungkan</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span
+                                className={`px-2 py-0.5 rounded font-semibold text-[11px] ${
+                                  p.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-600'
+                                }`}
+                              >
+                                {p.isActive ? 'Aktif' : 'Nonaktif'}
                               </span>
-                            ))}
-                          </td>
-                          <td className="py-2.5 px-3 text-center">
-                            <button
-                              onClick={() => {
-                                setResettingUser({ id: p.userId, name: p.fullName });
-                                setAdminNewPassword('wali123');
-                              }}
-                              className="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded text-[11px] font-semibold"
-                            >
-                              Reset Sandi
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                            </td>
+                            <td className="py-2.5 px-3 text-center space-x-1.5 whitespace-nowrap">
+                              <button
+                                onClick={() => setEditingParent(p)}
+                                className="px-2 py-1 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 rounded cursor-pointer text-[11px] font-semibold inline-flex items-center gap-1"
+                                title="Edit Profil Orang Tua"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setResettingUser({ id: p.userId, name: p.fullName });
+                                  setAdminNewPassword('wali123');
+                                }}
+                                className="px-2 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded text-[11px] font-semibold cursor-pointer"
+                                title="Reset Kata Sandi Akun"
+                              >
+                                Reset Sandi
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const toggled = !p.isActive;
+                                  storageService.saveParent({ ...p, isActive: toggled }, currentUser?.fullName || 'Admin');
+                                  showToast('success', `Akun orang tua ${p.fullName} berhasil ${toggled ? 'diaktifkan' : 'dinonaktifkan'}.`);
+                                }}
+                                className={`px-2 py-1 rounded cursor-pointer text-[11px] font-semibold ${
+                                  p.isActive
+                                    ? 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+                                    : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                                }`}
+                                title={p.isActive ? 'Nonaktifkan Akun' : 'Aktifkan Akun'}
+                              >
+                                {p.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (confirm(`YAKIN HAPUS PERMANEN akun orang tua "${p.fullName}"?\nAkun login dan profilnya akan dihapus sepenuhnya dari sistem.`)) {
+                                    storageService.deleteParentPermanently(p.id, currentUser?.fullName || 'Admin');
+                                    showToast('success', `Akun orang tua ${p.fullName} berhasil dihapus permanen.`);
+                                  }
+                                }}
+                                className="px-2 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded cursor-pointer text-[11px] font-semibold inline-flex items-center gap-1"
+                                title="Hapus Permanen Akun Orang Tua"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Hapus</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                   </tbody>
                 </table>
               </div>
@@ -910,32 +1066,323 @@ export const AdminDashboard: React.FC = () => {
             </div>
           )}
 
-          {/* 9. Jadwal Pelajaran */}
-          {activeMenu === 'jadwal' && (
+          {/* 9. Raport Digital Santri (Bisa Diedit oleh Admin) */}
+          {activeMenu === 'raport' && (
             <div className="space-y-6">
-              <div className="border-b border-stone-100 pb-4">
-                <h2 className="text-xl font-bold text-stone-900">Jadwal Pembelajaran Diniyah</h2>
-                <p className="text-xs text-stone-500">
-                  Pengaturan jadwal mata pelajaran sore hari di MDTU Nurul Hidayah.
-                </p>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-stone-100 pb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
+                    <FileCheck className="w-5 h-5 text-emerald-800" />
+                    <span>Kelola Raport Digital Santri</span>
+                  </h2>
+                  <p className="text-xs text-stone-500">
+                    Input nilai, mutaba'ah hafalan Al-Qur'an, adab santri, dan keputusan kenaikan kelas. Terhubung langsung ke Portal Orang Tua.
+                  </p>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {schedules.map((sch) => {
-                  const cls = classes.find(c => c.id === sch.classId);
-                  const teacher = teachers.find(t => t.id === sch.teacherId);
+              {/* Filter Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-stone-50 rounded-xl border border-stone-200 text-xs">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold text-stone-600">Filter Rombel:</span>
+                  <button
+                    onClick={() => setReportClassFilter('all')}
+                    className={`px-3 py-1 rounded-lg font-semibold transition cursor-pointer ${
+                      reportClassFilter === 'all'
+                        ? 'bg-emerald-900 text-white shadow-2xs'
+                        : 'bg-white text-stone-700 hover:bg-stone-100 border border-stone-200'
+                    }`}
+                  >
+                    Semua Kelas ({students.length})
+                  </button>
+                  {classes.map(c => {
+                    const cnt = students.filter(s => s.classId === c.id).length;
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => setReportClassFilter(c.id)}
+                        className={`px-3 py-1 rounded-lg font-semibold transition cursor-pointer ${
+                          reportClassFilter === c.id
+                            ? 'bg-emerald-900 text-white shadow-2xs'
+                            : 'bg-white text-stone-700 hover:bg-stone-100 border border-stone-200'
+                        }`}
+                      >
+                        {c.name} ({cnt})
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-stone-600">Semester:</span>
+                  <select
+                    value={reportSemesterFilter}
+                    onChange={(e) => setReportSemesterFilter(e.target.value as 'Ganjil' | 'Genap')}
+                    className="px-3 py-1 bg-white border border-stone-300 rounded-lg font-bold text-emerald-950 outline-none"
+                  >
+                    <option value="Genap">Semester Genap</option>
+                    <option value="Ganjil">Semester Ganjil</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Report Cards Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-stone-50 border-y border-stone-200 text-stone-700">
+                    <tr>
+                      <th className="py-2.5 px-3">No</th>
+                      <th className="py-2.5 px-3">NIS</th>
+                      <th className="py-2.5 px-3">Nama Santri</th>
+                      <th className="py-2.5 px-3">Kelas</th>
+                      <th className="py-2.5 px-3 text-center">Rata-Rata Nilai</th>
+                      <th className="py-2.5 px-3">Hafalan Al-Qur'an</th>
+                      <th className="py-2.5 px-3">Status Kenaikan</th>
+                      <th className="py-2.5 px-3 text-center">Aksi Raport</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100">
+                    {students
+                      .filter(s => reportClassFilter === 'all' || s.classId === reportClassFilter)
+                      .filter(s => s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || s.nis.includes(searchTerm))
+                      .map((s, idx) => {
+                        const cls = classes.find(c => c.id === s.classId);
+                        const rc = reportCards.find(r => r.studentId === s.id && r.semester === reportSemesterFilter);
+                        const avg = rc && rc.grades.length > 0
+                          ? (rc.grades.reduce((acc, g) => acc + g.score, 0) / rc.grades.length).toFixed(1)
+                          : '-';
+
+                        return (
+                          <tr key={s.id} className="hover:bg-stone-50">
+                            <td className="py-2.5 px-3 font-mono text-stone-400">{idx + 1}</td>
+                            <td className="py-2.5 px-3 font-mono font-semibold text-emerald-900">{s.nis}</td>
+                            <td className="py-2.5 px-3 font-bold text-stone-900">{s.fullName}</td>
+                            <td className="py-2.5 px-3 font-medium text-stone-700">{cls?.name}</td>
+                            <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-900 bg-emerald-50/40">
+                              {avg}
+                            </td>
+                            <td className="py-2.5 px-3 text-stone-700 max-w-xs truncate">
+                              {rc?.tahfidzProgress || '-'}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              {rc ? (
+                                <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900">
+                                  {rc.promotionStatus}
+                                </span>
+                              ) : (
+                                <span className="text-stone-400 italic">Belum dibuat</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-center space-x-1.5 whitespace-nowrap">
+                              <button
+                                onClick={() => {
+                                  if (rc) {
+                                    setEditingReportCard({ report: rc, student: s });
+                                  } else {
+                                    // Generate draft for editing
+                                    const wali = teachers.find(t => t.id === cls?.teacherId)?.title || 'Ust. Ade Yusup, S.Pd.';
+                                    const defaultGrades = [
+                                      { subject: 'Al-Qur\'an & Tahsin', kkm: 75, score: 85, gradeLetter: 'B' as const, predicate: 'Baik' as const, description: 'Fasih membaca Al-Qur\'an dengan tartil.' },
+                                      { subject: 'Tajwid & Tahfidz Juz 30', kkm: 75, score: 88, gradeLetter: 'A' as const, predicate: 'Sangat Baik' as const, description: 'Hafalan mutqin dan lancar muroja\'ah.' },
+                                      { subject: 'Fiqih Ibadah & Praktik Shalat', kkm: 75, score: 84, gradeLetter: 'B' as const, predicate: 'Baik' as const, description: 'Memahami rukun dan syarat sah shalat.' },
+                                      { subject: 'Aqidah & Akhlakul Karimah', kkm: 75, score: 90, gradeLetter: 'A' as const, predicate: 'Sangat Baik' as const, description: 'Berakhlak santun kepada guru dan orang tua.' },
+                                      { subject: 'Bahasa Arab & Mufrodat', kkm: 70, score: 80, gradeLetter: 'B' as const, predicate: 'Baik' as const, description: 'Menghafal kosakata harian bahasa Arab.' },
+                                      { subject: 'Tarikh Islam (SKI)', kkm: 70, score: 82, gradeLetter: 'B' as const, predicate: 'Baik' as const, description: 'Memahami sejarah para Nabi dan Rasul.' },
+                                      { subject: 'Hadits Pilihan & Doa Harian', kkm: 75, score: 86, gradeLetter: 'B' as const, predicate: 'Baik' as const, description: 'Hafal doa sehari-hari dan hadits pendek.' }
+                                    ];
+                                    const draft: DigitalReportCard = {
+                                      id: `report_${s.id}_${reportSemesterFilter.toLowerCase()}_2026`,
+                                      studentId: s.id,
+                                      classId: s.classId,
+                                      academicYear: '2025/2026',
+                                      semester: reportSemesterFilter,
+                                      issueDate: '2026-06-20',
+                                      place: 'Rajadesa',
+                                      grades: defaultGrades,
+                                      tahfidzProgress: 'Juz 30 (Surat An-Nas s.d An-Naba)',
+                                      tahfidzScore: 88,
+                                      tahfidzPredicate: 'Jayyid Jiddan (Sangat Baik)',
+                                      tajwidQuality: 'Makharijul huruf tartil dan fasih.',
+                                      characterValues: {
+                                        adabDanAkhlak: 'A',
+                                        kedisiplinan: 'A',
+                                        kebersihanKerapian: 'A',
+                                        keaktifanIbadah: 'A'
+                                      },
+                                      attendance: { hadir: 90, sakit: 1, izin: 1, alpa: 0 },
+                                      teacherNotes: 'Alhamdulillah, ananda menunjukkan kesungguhan belajar dan akhlak terpuji. Pertahankan dan tingkatkan muroja\'ah.',
+                                      promotionStatus: s.classId === 'class_4' ? 'Lulus dari MDTU Nurul Hidayah' : 'Naik ke Kelas Berikutnya',
+                                      promotedToClass: s.classId === 'class_1' ? 'Kelas 2' : s.classId === 'class_2' ? 'Kelas 3' : s.classId === 'class_3' ? 'Kelas 4' : 'Alumni MDTU',
+                                      headmasterName: 'Ust. Ade Yusup, S.Pd.',
+                                      headmasterTitle: 'Kepala MDTU Nurul Hidayah',
+                                      waliKelasName: wali,
+                                      updatedAt: new Date().toISOString(),
+                                      updatedBy: currentUser?.fullName || 'Admin'
+                                    };
+                                    setEditingReportCard({ report: draft, student: s });
+                                  }
+                                }}
+                                className="px-2.5 py-1 bg-emerald-800 hover:bg-emerald-900 text-white rounded font-semibold text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                                title="Edit / Input Raport Digital Santri"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                                <span>{rc ? 'Edit Raport' : 'Input Raport'}</span>
+                              </button>
+
+                              {rc && (
+                                <button
+                                  onClick={() => setViewingReportCard({ report: rc, student: s })}
+                                  className="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded font-semibold text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                                  title="Lihat & Cetak Raport Digital"
+                                >
+                                  <Printer className="w-3.5 h-3.5 text-emerald-800" />
+                                  <span>Lihat & Cetak</span>
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* 10. Jadwal Pelajaran (Admin Bisa Mengedit Jadwal Setiap Kelas) */}
+          {activeMenu === 'jadwal' && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-stone-100 pb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-emerald-800" />
+                    <span>Jadwal Pelajaran Setiap Kelas</span>
+                  </h2>
+                  <p className="text-xs text-stone-500">
+                    Pengaturan jadwal pelajaran kelas 1 s.d. 4. Admin dapat menambah, mengubah, dan menghapus jadwal.
+                  </p>
+                </div>
+                <button
+                  onClick={() =>
+                    setEditingSchedule({
+                      id: `sch_${Date.now()}`,
+                      classId: 'class_1',
+                      day: 'Senin',
+                      timeSlot: '13:00 - 14:15 WIB',
+                      subject: 'Iqro & Tahsin Al-Qur\'an',
+                      teacherId: 'teacher_2'
+                    })
+                  }
+                  className="px-3.5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <Plus className="w-4 h-4 text-amber-300" />
+                  <span>Tambah Jadwal Baru</span>
+                </button>
+              </div>
+
+              {/* Operational Study Hours Announcement Banner */}
+              <div className="p-4 bg-emerald-900 text-white rounded-xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 bg-amber-400/20 px-2 py-0.5 rounded">
+                    Ketentuan Resmi Jam Belajar
+                  </span>
+                  <h4 className="font-bold text-sm">
+                    {settings.studyHours || 'Hari Senin - Minggu pukul 13.00 - 16.00 WIB (Jumat Libur)'}
+                  </h4>
+                  <p className="text-xs text-emerald-200">
+                    Semua sesi pembelajaran dilaksanakan sore hari antara pukul 13.00 s.d 16.00 WIB. Hari Jumat diliburkan.
+                  </p>
+                </div>
+              </div>
+
+              {/* Class Filter Tabs */}
+              <div className="flex flex-wrap items-center gap-2 border-b border-stone-200 pb-2">
+                <button
+                  onClick={() => setScheduleClassFilter('all')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                    scheduleClassFilter === 'all'
+                      ? 'bg-emerald-900 text-white shadow-2xs'
+                      : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                  }`}
+                >
+                  Semua Kelas ({schedules.length} Sesi)
+                </button>
+                {classes.map(c => {
+                  const cnt = schedules.filter(s => s.classId === c.id).length;
                   return (
-                    <div key={sch.id} className="p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded">{sch.day}</span>
-                        <span className="font-mono text-stone-500">{sch.timeSlot}</span>
-                      </div>
-                      <h4 className="font-bold text-sm text-stone-900">{sch.subject}</h4>
-                      <p className="text-xs text-stone-600">{cls?.name} · Pengampu: {teacher?.title}</p>
-                    </div>
+                    <button
+                      key={c.id}
+                      onClick={() => setScheduleClassFilter(c.id)}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                        scheduleClassFilter === c.id
+                          ? 'bg-emerald-900 text-white shadow-2xs'
+                          : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                      }`}
+                    >
+                      {c.name} ({cnt} Sesi)
+                    </button>
                   );
                 })}
               </div>
+
+              {/* Schedules Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {schedules
+                  .filter(s => scheduleClassFilter === 'all' || s.classId === scheduleClassFilter)
+                  .map((sch) => {
+                    const cls = classes.find(c => c.id === sch.classId);
+                    const teacher = teachers.find(t => t.id === sch.teacherId);
+                    return (
+                      <div key={sch.id} className="p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-2 hover:border-emerald-300 transition">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className={`font-bold px-2.5 py-0.5 rounded text-[11px] ${
+                            sch.day === 'Minggu'
+                              ? 'bg-blue-100 text-blue-900'
+                              : 'bg-emerald-100 text-emerald-900'
+                          }`}>
+                            {sch.day}
+                          </span>
+                          <span className="font-mono font-semibold text-emerald-950 bg-white px-2 py-0.5 rounded border border-stone-200 text-[11px]">
+                            {sch.timeSlot}
+                          </span>
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-sm text-stone-900">{sch.subject}</h4>
+                          <p className="text-xs text-stone-600 mt-0.5">
+                            {cls?.name} · Pengampu: <span className="font-semibold text-emerald-900">{teacher?.title || '-'}</span>
+                          </p>
+                        </div>
+                        <div className="pt-2 border-t border-stone-200/60 flex justify-end gap-2">
+                          <button
+                            onClick={() => setEditingSchedule(sch)}
+                            className="px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-800 border border-stone-200 rounded text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                            <span>Ubah Jadwal</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Hapus jadwal "${sch.subject}" (${sch.day}, ${sch.timeSlot})?`)) {
+                                storageService.deleteSchedule(sch.id, currentUser?.fullName || 'Admin');
+                                showToast('success', 'Jadwal pelajaran berhasil dihapus.');
+                              }
+                            }}
+                            className="px-2.5 py-1 bg-white hover:bg-rose-50 text-rose-700 border border-stone-200 rounded text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Hapus</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              {schedules.filter(s => scheduleClassFilter === 'all' || s.classId === scheduleClassFilter).length === 0 && (
+                <div className="p-8 text-center bg-stone-50 rounded-xl border border-stone-200 text-stone-400 text-xs">
+                  Tidak ada jadwal pelajaran untuk kelas yang dipilih. Silakan klik tombol "Tambah Jadwal Baru" di atas.
+                </div>
+              )}
             </div>
           )}
 
@@ -1115,14 +1562,68 @@ export const AdminDashboard: React.FC = () => {
             </div>
           )}
 
-          {/* 13. Tagihan Bulanan (SPP) Generator */}
+          {/* 13. Tagihan Bulanan (SPP) Generator & Pengaturan Nominal */}
           {activeMenu === 'tagihan' && (
             <div className="space-y-6">
               <div className="border-b border-stone-100 pb-4">
-                <h2 className="text-xl font-bold text-stone-900">Penerbitan Tagihan Bulanan (SPP)</h2>
+                <h2 className="text-xl font-bold text-stone-900">Penerbitan Tagihan & Nominal SPP Bulanan</h2>
                 <p className="text-xs text-stone-500">
-                  Terbitkan tagihan iuran madrasah secara massal untuk periode baru. Sistem mencegah duplikasi tagihan ganda.
+                  Ubah nominal SPP bulanan santri dan terbitkan tagihan iuran madrasah secara massal untuk periode baru.
                 </p>
+              </div>
+
+              {/* Pengaturan Nominal SPP Bulanan */}
+              <div className="p-6 bg-amber-50/70 rounded-2xl border border-amber-200 space-y-4 max-w-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-sm text-stone-900">Ubah Nominal SPP Bulanan</h3>
+                    <p className="text-xs text-stone-600">
+                      Besaran iuran bulanan santri MDTU Nurul Hidayah yang berlaku saat ini.
+                    </p>
+                  </div>
+                  <span className="px-3 py-1 bg-amber-200 text-stone-900 rounded-lg font-bold font-mono text-xs">
+                    Saat Ini: Rp {(settings.monthlySppAmount || 25000).toLocaleString('id-ID')}
+                  </span>
+                </div>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    storageService.updateMonthlySppAmount(sppNominalInput, updatePendingBillsWithSpp, currentUser?.fullName || 'Admin');
+                    setSettings(storageService.getSiteSettings());
+                    setPaymentTypes(storageService.getPaymentTypes());
+                    setBills(storageService.getBills());
+                    showToast('success', `Nominal SPP bulanan berhasil diubah menjadi Rp ${sppNominalInput.toLocaleString('id-ID')}.`);
+                  }}
+                  className="space-y-3 text-xs"
+                >
+                  <div className="space-y-1">
+                    <label className="font-semibold text-stone-700">Nominal SPP Bulanan Baru (Rp) *</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1000"
+                      required
+                      value={sppNominalInput}
+                      onChange={(e) => setSppNominalInput(parseInt(e.target.value) || 0)}
+                      className="w-full px-3 py-2 border border-amber-300 rounded-lg outline-none bg-white font-mono font-bold text-base text-emerald-950"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer text-stone-700">
+                    <input
+                      type="checkbox"
+                      checked={updatePendingBillsWithSpp}
+                      onChange={(e) => setUpdatePendingBillsWithSpp(e.target.checked)}
+                      className="rounded text-emerald-800"
+                    />
+                    <span>Perbarui juga seluruh tagihan santri yang berstatus 'Belum Bayar' dengan nominal ini</span>
+                  </label>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-lg transition cursor-pointer shadow-xs"
+                  >
+                    Simpan Nominal SPP
+                  </button>
+                </form>
               </div>
 
               <div className="p-6 bg-stone-50 rounded-2xl border border-stone-200 space-y-4 max-w-xl">
@@ -1422,36 +1923,291 @@ export const AdminDashboard: React.FC = () => {
             </div>
           )}
 
-          {/* 17. Pengaturan Website */}
+          {/* 18. Pengaturan Website & Nomor Rekening Pembayaran */}
           {activeMenu === 'pengaturan-web' && (
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div className="border-b border-stone-100 pb-4">
-                <h2 className="text-xl font-bold text-stone-900">Pengaturan Tampilan & Visi Misi Website</h2>
+                <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-emerald-800" />
+                  <span>Pengaturan Website, Jam Belajar & Rekening Pembayaran</span>
+                </h2>
                 <p className="text-xs text-stone-500">
-                  Konfigurasi banner, visi misi, dan rekening pembayaran santri.
+                  Konfigurasi rekening resmi pembayaran SPP, jam belajar santri, profil lembaga, dan konten publik website.
                 </p>
               </div>
 
+              {/* 1. Pengaturan Nomor Rekening Pembayaran Resmi */}
+              <div className="p-6 bg-stone-50 rounded-2xl border border-stone-200 space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-stone-200 pb-3">
+                  <div>
+                    <h3 className="font-bold text-sm text-stone-900 flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-emerald-800" />
+                      <span>Rekening & Saluran Pembayaran Resmi</span>
+                    </h3>
+                    <p className="text-xs text-stone-500">
+                      Rekening tujuan transfer yang ditampilkan di portal orang tua dan bukti tagihan.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setEditingBankIndex(-1);
+                      setBankForm({ bankName: '', accountNumber: '', accountHolder: '' });
+                    }}
+                    className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Tambah Rekening</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {settings.bankAccounts?.map((bank, bIdx) => (
+                    <div key={bIdx} className="p-4 bg-white rounded-xl border border-stone-200 space-y-2 relative shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-emerald-950 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          {bank.bankName}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => {
+                              setEditingBankIndex(bIdx);
+                              setBankForm({ ...bank });
+                            }}
+                            className="p-1 text-emerald-800 hover:bg-emerald-50 rounded cursor-pointer"
+                            title="Edit Rekening"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Hapus rekening ${bank.bankName} (${bank.accountNumber})?`)) {
+                                const updated = settings.bankAccounts.filter((_, idx) => idx !== bIdx);
+                                const newSettings = { ...settings, bankAccounts: updated };
+                                storageService.updateSiteSettings(newSettings, currentUser?.fullName || 'Admin');
+                                setSettings(newSettings);
+                                showToast('success', `Rekening ${bank.bankName} berhasil dihapus.`);
+                              }
+                            }}
+                            className="p-1 text-rose-700 hover:bg-rose-50 rounded cursor-pointer"
+                            title="Hapus Rekening"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="font-mono font-bold text-stone-900 text-sm">
+                        {bank.accountNumber}
+                      </div>
+                      <div className="text-xs text-stone-600">
+                        a.n. <span className="font-semibold text-stone-800">{bank.accountHolder}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Inline Add / Edit Bank Form */}
+                {editingBankIndex !== null && (
+                  <div className="p-4 bg-amber-50 rounded-xl border border-amber-300 space-y-3 text-xs mt-4">
+                    <h4 className="font-bold text-stone-900">
+                      {editingBankIndex === -1 ? 'Tambah Rekening Pembayaran Baru' : 'Edit Rekening Pembayaran'}
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <label className="font-semibold text-stone-700">Nama Bank / E-Wallet *</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Contoh: DANA (Dompet Digital) / Bank BRI"
+                          value={bankForm.bankName}
+                          onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })}
+                          className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none bg-white font-medium"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-semibold text-stone-700">Nomor Rekening / No. HP *</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Contoh: 081324168105 atau 4056 0101 3846 503"
+                          value={bankForm.accountNumber}
+                          onChange={(e) => setBankForm({ ...bankForm, accountNumber: e.target.value })}
+                          className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none bg-white font-mono font-bold"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-semibold text-stone-700">Atas Nama (Pemilik) *</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Contoh: Azmi M Nurjamil / MDTU Nurul Hidayah"
+                          value={bankForm.accountHolder}
+                          onChange={(e) => setBankForm({ ...bankForm, accountHolder: e.target.value })}
+                          className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none bg-white"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setEditingBankIndex(null)}
+                        className="px-3 py-1.5 bg-stone-200 text-stone-700 rounded-lg font-semibold cursor-pointer hover:bg-stone-300"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!bankForm.bankName || !bankForm.accountNumber || !bankForm.accountHolder) {
+                            showToast('error', 'Semua kolom rekening wajib diisi.');
+                            return;
+                          }
+                          const curAccounts = [...(settings.bankAccounts || [])];
+                          if (editingBankIndex === -1) {
+                            curAccounts.push(bankForm);
+                          } else {
+                            curAccounts[editingBankIndex] = bankForm;
+                          }
+                          const newSettings = { ...settings, bankAccounts: curAccounts };
+                          storageService.updateSiteSettings(newSettings, currentUser?.fullName || 'Admin');
+                          setSettings(newSettings);
+                          setEditingBankIndex(null);
+                          showToast('success', 'Rekening pembayaran berhasil disimpan.');
+                        }}
+                        className="px-4 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg font-bold cursor-pointer"
+                      >
+                        Simpan Rekening
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Form Pengaturan Informasi Lembaga, Jam Belajar, dan Website */}
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   storageService.updateSiteSettings(settings, currentUser?.fullName || 'Admin');
-                  showToast('success', 'Pengaturan website berhasil diperbarui.');
+                  showToast('success', 'Pengaturan website dan jam belajar berhasil disimpan.');
                 }}
-                className="space-y-4 text-xs max-w-2xl"
+                className="p-6 bg-white rounded-2xl border border-stone-200 space-y-5 text-xs"
               >
+                <h3 className="font-bold text-sm text-stone-900 border-b border-stone-100 pb-2 flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-emerald-800" />
+                  <span>Informasi Lembaga & Jam Belajar Santri</span>
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="font-semibold text-stone-700">Waktu & Jam Belajar Santri *</label>
+                    <input
+                      type="text"
+                      required
+                      value={settings.studyHours || 'Hari Senin - Minggu pukul 13.00 - 16.00 WIB (Jumat Libur)'}
+                      onChange={(e) => setSettings({ ...settings, studyHours: e.target.value })}
+                      placeholder="Contoh: Hari Senin - Minggu pukul 13.00 - 16.00 WIB (Jumat Libur)"
+                      className="w-full px-3 py-2 border border-emerald-300 rounded-lg outline-none bg-emerald-50/30 font-bold text-emerald-950"
+                    />
+                    <span className="text-[11px] text-stone-500">
+                      Teks ini ditampilkan di halaman Profil, Kontak, Footer, dan jadwal pelajaran.
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-semibold text-stone-700">Nama Kepala Lembaga *</label>
+                    <input
+                      type="text"
+                      required
+                      value={settings.headmasterName}
+                      onChange={(e) => setSettings({ ...settings, headmasterName: e.target.value })}
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-semibold text-stone-700">Jabatan / Gelar Resmi *</label>
+                    <input
+                      type="text"
+                      required
+                      value={settings.headmasterTitle}
+                      onChange={(e) => setSettings({ ...settings, headmasterTitle: e.target.value })}
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-1">
-                  <label className="font-semibold text-stone-700">Teks Utama Banner Beranda</label>
-                  <input
-                    type="text"
-                    value={settings.heroHeadline}
-                    onChange={(e) => setSettings({ ...settings, heroHeadline: e.target.value })}
+                  <label className="font-semibold text-stone-700">Sambutan Kepala Lembaga di Beranda</label>
+                  <textarea
+                    rows={4}
+                    value={settings.headmasterGreeting}
+                    onChange={(e) => setSettings({ ...settings, headmasterGreeting: e.target.value })}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none leading-relaxed"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="font-semibold text-stone-700">Nomor Telepon / WhatsApp Resmi *</label>
+                    <input
+                      type="text"
+                      required
+                      value={settings.phone}
+                      onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-semibold text-stone-700">Email Resmi Lembaga *</label>
+                    <input
+                      type="email"
+                      required
+                      value={settings.email}
+                      onChange={(e) => setSettings({ ...settings, email: e.target.value })}
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700">Alamat Lengkap MDTU Nurul Hidayah *</label>
+                  <textarea
+                    rows={2}
+                    required
+                    value={settings.address}
+                    onChange={(e) => setSettings({ ...settings, address: e.target.value })}
                     className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none"
                   />
                 </div>
 
+                <h3 className="font-bold text-sm text-stone-900 border-b border-stone-100 pt-3 pb-2 flex items-center gap-2">
+                  <Newspaper className="w-4 h-4 text-emerald-800" />
+                  <span>Tampilan Beranda, Visi & Misi</span>
+                </h3>
+
                 <div className="space-y-1">
-                  <label className="font-semibold text-stone-700">Teks Visi Lembaga</label>
+                  <label className="font-semibold text-stone-700">Headline Banner Beranda *</label>
+                  <input
+                    type="text"
+                    required
+                    value={settings.heroHeadline}
+                    onChange={(e) => setSettings({ ...settings, heroHeadline: e.target.value })}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none font-bold text-stone-900"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700">Sub-headline Banner Beranda</label>
+                  <input
+                    type="text"
+                    value={settings.heroSubheadline}
+                    onChange={(e) => setSettings({ ...settings, heroSubheadline: e.target.value })}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none text-stone-700"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700">Visi Lembaga</label>
                   <textarea
                     rows={3}
                     value={settings.vision}
@@ -1460,12 +2216,29 @@ export const AdminDashboard: React.FC = () => {
                   />
                 </div>
 
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-lg transition"
-                >
-                  Simpan Pengaturan Website
-                </button>
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700">Misi Lembaga (Tulis satu poin per baris)</label>
+                  <textarea
+                    rows={5}
+                    value={Array.isArray(settings.mission) ? settings.mission.join('\n') : ''}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        mission: e.target.value.split('\n').filter(line => line.trim().length > 0)
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none leading-relaxed"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-lg shadow-sm transition cursor-pointer"
+                  >
+                    Simpan Seluruh Pengaturan Website
+                  </button>
+                </div>
               </form>
             </div>
           )}
@@ -1956,8 +2729,30 @@ export const AdminDashboard: React.FC = () => {
                   </select>
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700">Tempat Lahir</label>
+                  <input
+                    type="text"
+                    value={editingStudent.birthPlace || ''}
+                    onChange={(e) => setEditingStudent({ ...editingStudent, birthPlace: e.target.value })}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none"
+                    placeholder="Contoh: Ciamis"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700">Tanggal Lahir</label>
+                  <input
+                    type="date"
+                    value={editingStudent.birthDate || '2019-01-01'}
+                    onChange={(e) => setEditingStudent({ ...editingStudent, birthDate: e.target.value })}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none"
+                  />
+                </div>
+              </div>
+
               <div className="space-y-1">
-                <label className="font-semibold text-stone-700">Alamat</label>
+                <label className="font-semibold text-stone-700">Alamat Domisili Santri</label>
                 <input
                   type="text"
                   value={editingStudent.address || ''}
@@ -1965,19 +2760,187 @@ export const AdminDashboard: React.FC = () => {
                   className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none"
                 />
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700">Tahun Masuk</label>
+                  <input
+                    type="number"
+                    value={editingStudent.enrollmentYear || 2026}
+                    onChange={(e) => setEditingStudent({ ...editingStudent, enrollmentYear: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700">Status Santri</label>
+                  <select
+                    value={editingStudent.status || 'Aktif'}
+                    onChange={(e) => setEditingStudent({ ...editingStudent, status: e.target.value as 'Aktif' | 'Nonaktif' | 'Lulus' | 'Pindah' })}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none bg-white font-medium"
+                  >
+                    <option value="Aktif">Aktif</option>
+                    <option value="Nonaktif">Nonaktif</option>
+                    <option value="Lulus">Lulus</option>
+                    <option value="Pindah">Pindah</option>
+                  </select>
+                </div>
+              </div>
+
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setEditingStudent(null)}
-                  className="px-4 py-2 bg-stone-100 text-stone-700 rounded-lg font-semibold"
+                  className="px-4 py-2 bg-stone-100 text-stone-700 rounded-lg font-semibold cursor-pointer hover:bg-stone-200"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg font-bold"
+                  className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg font-bold cursor-pointer"
                 >
                   Simpan Santri
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit / Add Parent Modal */}
+      {editingParent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+          <div className="relative max-w-lg w-full bg-white rounded-2xl p-6 shadow-2xl space-y-4 my-8">
+            <h3 className="font-bold text-base text-stone-900">
+              {editingParent.id && parents.some(p => p.id === editingParent.id) ? 'Edit Data Orang Tua / Wali' : 'Tambah Orang Tua / Wali Baru'}
+            </h3>
+            <p className="text-xs text-stone-500">
+              Perbarui identitas orang tua, nomor kontak WhatsApp, dan hubungan santri kandung.
+            </p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                storageService.saveParent(editingParent as ParentProfile, currentUser?.fullName || 'Admin');
+                showToast('success', `Data orang tua ${editingParent.fullName} berhasil disimpan.`);
+                setEditingParent(null);
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700">Nama Lengkap Orang Tua / Wali *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingParent.fullName || ''}
+                    onChange={(e) => setEditingParent({ ...editingParent, fullName: e.target.value })}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none"
+                    placeholder="Contoh: Bapak Ahmad Sobari"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700">Hubungan dengan Santri *</label>
+                  <select
+                    value={editingParent.relationship || 'Ayah'}
+                    onChange={(e) => setEditingParent({ ...editingParent, relationship: e.target.value as 'Ayah' | 'Ibu' | 'Wali' })}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none bg-white font-medium"
+                  >
+                    <option value="Ayah">Ayah Kandung</option>
+                    <option value="Ibu">Ibu Kandung</option>
+                    <option value="Wali">Wali / Keluarga</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700">No. WhatsApp / Telepon *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingParent.phone || ''}
+                    onChange={(e) => setEditingParent({ ...editingParent, phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none font-mono"
+                    placeholder="Contoh: 081234567890"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700">Pekerjaan</label>
+                  <input
+                    type="text"
+                    value={editingParent.occupation || ''}
+                    onChange={(e) => setEditingParent({ ...editingParent, occupation: e.target.value })}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none"
+                    placeholder="Contoh: Wiraswasta / Petani"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-stone-700">Alamat Tempat Tinggal</label>
+                <textarea
+                  rows={2}
+                  value={editingParent.address || ''}
+                  onChange={(e) => setEditingParent({ ...editingParent, address: e.target.value })}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none leading-relaxed"
+                  placeholder="Alamat domisili lengkap..."
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-stone-700 block">Hubungkan dengan Santri:</label>
+                <div className="max-h-36 overflow-y-auto p-2 border border-stone-200 rounded-lg space-y-1 bg-stone-50">
+                  {students.map((st) => {
+                    const isChecked = editingParent.studentIds?.includes(st.id) || false;
+                    return (
+                      <label key={st.id} className="flex items-center gap-2 p-1 hover:bg-white rounded cursor-pointer text-[11px]">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            const cur = editingParent.studentIds ? [...editingParent.studentIds] : [];
+                            if (e.target.checked) {
+                              if (!cur.includes(st.id)) cur.push(st.id);
+                            } else {
+                              const idx = cur.indexOf(st.id);
+                              if (idx > -1) cur.splice(idx, 1);
+                            }
+                            setEditingParent({ ...editingParent, studentIds: cur });
+                          }}
+                          className="rounded text-emerald-700 focus:ring-emerald-700"
+                        />
+                        <span className="font-medium text-stone-800">{st.fullName}</span>
+                        <span className="text-stone-400 font-mono">({st.nis})</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-stone-700">Status Akun</label>
+                <select
+                  value={editingParent.isActive ? 'true' : 'false'}
+                  onChange={(e) => setEditingParent({ ...editingParent, isActive: e.target.value === 'true' })}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none bg-white font-medium"
+                >
+                  <option value="true">Aktif (Dapat Login ke Portal)</option>
+                  <option value="false">Nonaktif (Akses Diblokir)</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingParent(null)}
+                  className="px-4 py-2 bg-stone-100 text-stone-700 rounded-lg font-semibold cursor-pointer hover:bg-stone-200"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg font-bold cursor-pointer"
+                >
+                  Simpan Data Orang Tua
                 </button>
               </div>
             </form>
@@ -2071,6 +3034,142 @@ export const AdminDashboard: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Schedule Modal */}
+      {editingSchedule && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+          <div className="relative max-w-md w-full bg-white rounded-2xl p-6 shadow-2xl space-y-4 my-8">
+            <h3 className="font-bold text-base text-stone-900">
+              {editingSchedule.id && schedules.some(s => s.id === editingSchedule.id) ? 'Ubah Jadwal Pelajaran' : 'Tambah Jadwal Pelajaran Baru'}
+            </h3>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!editingSchedule.subject || !editingSchedule.classId || !editingSchedule.day) return;
+                storageService.saveSchedule(editingSchedule as ScheduleItem, currentUser?.fullName || 'Admin');
+                setSchedules(storageService.getSchedules());
+                showToast('success', 'Jadwal pelajaran berhasil disimpan.');
+                setEditingSchedule(null);
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div className="space-y-1">
+                <label className="font-semibold text-stone-700">Kelas / Rombel *</label>
+                <select
+                  value={editingSchedule.classId || 'class_1'}
+                  onChange={(e) => setEditingSchedule({ ...editingSchedule, classId: e.target.value })}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none bg-white font-medium"
+                >
+                  {classes.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700">Hari Pembelajaran *</label>
+                  <select
+                    value={editingSchedule.day || 'Senin'}
+                    onChange={(e) => setEditingSchedule({ ...editingSchedule, day: e.target.value as any })}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none bg-white font-bold text-emerald-950"
+                  >
+                    <option value="Senin">Senin</option>
+                    <option value="Selasa">Selasa</option>
+                    <option value="Rabu">Rabu</option>
+                    <option value="Kamis">Kamis</option>
+                    <option value="Sabtu">Sabtu</option>
+                    <option value="Minggu">Minggu</option>
+                  </select>
+                  <span className="text-[10px] text-amber-700 font-medium block">Hari Jumat Libur</span>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700">Jam Belajar (13.00-16.00) *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingSchedule.timeSlot || '13:00 - 14:15 WIB'}
+                    onChange={(e) => setEditingSchedule({ ...editingSchedule, timeSlot: e.target.value })}
+                    placeholder="Contoh: 13:00 - 14:15 WIB"
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none bg-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-stone-700">Mata Pelajaran *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Fiqih Safinatun Najah"
+                  value={editingSchedule.subject || ''}
+                  onChange={(e) => setEditingSchedule({ ...editingSchedule, subject: e.target.value })}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none font-bold"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-stone-700">Guru Pengampu *</label>
+                <select
+                  value={editingSchedule.teacherId || 'teacher_1'}
+                  onChange={(e) => setEditingSchedule({ ...editingSchedule, teacherId: e.target.value })}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none bg-white"
+                >
+                  {teachers.map(t => (
+                    <option key={t.id} value={t.id}>{t.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingSchedule(null)}
+                  className="px-4 py-2 bg-stone-100 text-stone-700 rounded-lg font-semibold hover:bg-stone-200 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg font-bold cursor-pointer"
+                >
+                  Simpan Jadwal
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Report Card Editor Modal */}
+      {editingReportCard && (
+        <ReportCardEditorModal
+          report={editingReportCard.report}
+          student={editingReportCard.student}
+          onSave={(updated) => {
+            storageService.saveReportCard(updated, currentUser?.fullName || 'Admin');
+            setReportCards(storageService.getReportCards());
+            showToast('success', `Raport digital santri ${editingReportCard.student.fullName} berhasil disimpan.`);
+            setEditingReportCard(null);
+          }}
+          onClose={() => setEditingReportCard(null)}
+        />
+      )}
+
+      {/* Report Card Printable Preview Modal */}
+      {viewingReportCard && (
+        <div className="fixed inset-0 z-50 bg-stone-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[92vh] overflow-y-auto p-4 sm:p-6 shadow-2xl border border-stone-200">
+            <DigitalReportCardView
+              report={viewingReportCard.report}
+              student={viewingReportCard.student}
+              classItem={classes.find(c => c.id === viewingReportCard.student.classId)}
+              onClose={() => setViewingReportCard(null)}
+            />
           </div>
         </div>
       )}

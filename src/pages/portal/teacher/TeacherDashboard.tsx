@@ -22,10 +22,11 @@ import {
   Save,
   CheckCircle,
   AlertCircle,
-  BookOpen,
   Plus,
   Trash2,
-  Calendar
+  Calendar,
+  Edit2,
+  CheckCheck
 } from 'lucide-react';
 
 export const TeacherDashboard: React.FC = () => {
@@ -42,6 +43,9 @@ export const TeacherDashboard: React.FC = () => {
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [classBills, setClassBills] = useState<StudentBill[]>([]);
+
+  // Teacher editing student
+  const [editingStudentForTeacher, setEditingStudentForTeacher] = useState<Student | null>(null);
 
   // Form states
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
@@ -340,6 +344,7 @@ export const TeacherDashboard: React.FC = () => {
                     <th className="py-2.5 px-3 font-semibold">Tempat, Tgl Lahir</th>
                     <th className="py-2.5 px-3 font-semibold">Alamat Domisili</th>
                     <th className="py-2.5 px-3 font-semibold">Status</th>
+                    <th className="py-2.5 px-3 font-semibold text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100">
@@ -355,6 +360,15 @@ export const TeacherDashboard: React.FC = () => {
                         <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[11px] font-semibold">
                           {student.status}
                         </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <button
+                          onClick={() => setEditingStudentForTeacher(student)}
+                          className="p-1 text-emerald-800 hover:bg-emerald-100 rounded cursor-pointer"
+                          title="Edit & Perbarui Data Santri"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -388,6 +402,41 @@ export const TeacherDashboard: React.FC = () => {
                 className="px-3 py-1.5 text-xs border border-stone-300 rounded-lg outline-none bg-stone-50"
               />
             </div>
+          </div>
+
+          {/* Quick attendance stats and bulk actions */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-stone-50 rounded-xl border border-stone-200">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
+              <span className="text-stone-500 font-medium">Rekap {attendanceDate}:</span>
+              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded">
+                Hadir: {Object.values(attendanceList).filter(a => a.status === 'Hadir').length}
+              </span>
+              <span className="px-2 py-0.5 bg-blue-100 text-blue-800 font-bold rounded">
+                Sakit: {Object.values(attendanceList).filter(a => a.status === 'Sakit').length}
+              </span>
+              <span className="px-2 py-0.5 bg-amber-100 text-amber-800 font-bold rounded">
+                Izin: {Object.values(attendanceList).filter(a => a.status === 'Izin').length}
+              </span>
+              <span className="px-2 py-0.5 bg-rose-100 text-rose-800 font-bold rounded">
+                Alpa: {Object.values(attendanceList).filter(a => a.status === 'Alpa').length}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const updated: typeof attendanceList = {};
+                students.forEach(s => {
+                  updated[s.id] = { status: 'Hadir', notes: attendanceList[s.id]?.notes || '' };
+                });
+                setAttendanceList(updated);
+                setSaveSuccessMsg('Seluruh santri ditandai Hadir. Klik tombol "Simpan Rekap Kehadiran" di bawah untuk memvalidasi ke database.');
+                setTimeout(() => setSaveSuccessMsg(''), 4000);
+              }}
+              className="px-3 py-1.5 bg-white border border-stone-300 hover:border-emerald-700 text-emerald-900 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition shadow-2xs"
+            >
+              <CheckCheck className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Tandai Semua Hadir</span>
+            </button>
           </div>
 
           <div className="overflow-x-auto">
@@ -848,6 +897,114 @@ export const TeacherDashboard: React.FC = () => {
               Simpan Kata Sandi Baru
             </button>
           </form>
+        </div>
+      )}
+
+      {/* Teacher Edit Student Modal */}
+      {editingStudentForTeacher && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+          <div className="relative max-w-md w-full bg-white rounded-2xl p-6 shadow-2xl space-y-4 my-8">
+            <h3 className="font-bold text-base text-stone-900">
+              Perbarui Data Santri: {editingStudentForTeacher.fullName}
+            </h3>
+            <p className="text-xs text-stone-500">
+              Wali kelas berwenang memperbarui identitas dan domisili santri binaannya.
+            </p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                storageService.updateStudentByTeacher(editingStudentForTeacher, teacherProfile?.title || 'Guru');
+                setSaveSuccessMsg(`Data santri ${editingStudentForTeacher.fullName} berhasil diperbarui.`);
+                setTimeout(() => setSaveSuccessMsg(''), 4000);
+                setEditingStudentForTeacher(null);
+                loadData();
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div className="space-y-1">
+                <label className="font-semibold text-stone-700">Nama Lengkap Santri *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingStudentForTeacher.fullName}
+                  onChange={(e) => setEditingStudentForTeacher({ ...editingStudentForTeacher, fullName: e.target.value })}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700">Jenis Kelamin</label>
+                  <select
+                    value={editingStudentForTeacher.gender}
+                    onChange={(e) => setEditingStudentForTeacher({ ...editingStudentForTeacher, gender: e.target.value as 'L' | 'P' })}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none bg-white font-medium"
+                  >
+                    <option value="L">Laki-Laki</option>
+                    <option value="P">Perempuan</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700">Status</label>
+                  <select
+                    value={editingStudentForTeacher.status}
+                    onChange={(e) => setEditingStudentForTeacher({ ...editingStudentForTeacher, status: e.target.value as 'Aktif' | 'Nonaktif' })}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none bg-white font-medium"
+                  >
+                    <option value="Aktif">Aktif</option>
+                    <option value="Nonaktif">Nonaktif</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700">Tempat Lahir</label>
+                  <input
+                    type="text"
+                    value={editingStudentForTeacher.birthPlace}
+                    onChange={(e) => setEditingStudentForTeacher({ ...editingStudentForTeacher, birthPlace: e.target.value })}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700">Tanggal Lahir</label>
+                  <input
+                    type="date"
+                    value={editingStudentForTeacher.birthDate}
+                    onChange={(e) => setEditingStudentForTeacher({ ...editingStudentForTeacher, birthDate: e.target.value })}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-stone-700">Alamat Domisili</label>
+                <textarea
+                  rows={2}
+                  value={editingStudentForTeacher.address}
+                  onChange={(e) => setEditingStudentForTeacher({ ...editingStudentForTeacher, address: e.target.value })}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none leading-relaxed"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingStudentForTeacher(null)}
+                  className="px-4 py-2 bg-stone-100 text-stone-700 rounded-lg font-semibold cursor-pointer hover:bg-stone-200"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg font-bold cursor-pointer"
+                >
+                  Simpan Perubahan
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

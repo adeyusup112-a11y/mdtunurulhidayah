@@ -115,10 +115,10 @@ export const KontakPage: React.FC<{ settings: SiteSettings }> = ({ settings }) =
                 </div>
                 <div>
                   <span className="font-bold text-stone-900 block">Jam Operasional & Belajar:</span>
-                  <p className="text-stone-600 leading-relaxed">
-                    Senin s.d. Sabtu: 14.00 – 16.30 WIB
+                  <p className="text-stone-600 leading-relaxed font-semibold text-emerald-950">
+                    Senin s.d. Minggu: 13.00 – 16.00 WIB
                   </p>
-                  <p className="text-[11px] text-stone-400">Minggu & Hari Libur Nasional: Libur</p>
+                  <p className="text-[11px] text-amber-800 font-medium">Hari Jumat: Libur</p>
                 </div>
               </div>
             </div>

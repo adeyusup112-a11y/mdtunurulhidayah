@@ -58,7 +58,9 @@ export const ProfilePage: React.FC<{ settings: SiteSettings }> = ({ settings }) 
             </div>
             <div className="grid grid-cols-3 py-2 border-b border-stone-100">
               <span className="text-stone-500 font-medium">Waktu Pembelajaran</span>
-              <span className="col-span-2 text-stone-800">Senin s.d. Sabtu, Pukul 14.00 – 16.30 WIB</span>
+              <span className="col-span-2 text-stone-800">
+                {settings.studyHours || 'Senin s.d. Minggu (Jumat Libur), Pukul 13.00 – 16.00 WIB'}
+              </span>
             </div>
             <div className="grid grid-cols-3 py-2">
               <span className="text-stone-500 font-medium">Kurikulum</span>

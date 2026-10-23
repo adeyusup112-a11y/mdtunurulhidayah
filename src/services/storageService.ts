@@ -19,8 +19,12 @@ import {
   SiteSettings,
   ContactMessage,
   ActivityLog,
-  UserRole
+  UserRole,
+  DigitalReportCard,
+  DatabaseState
 } from '../types';
+
+export type { DatabaseState };
 
 import {
   INITIAL_SITE_SETTINGS,
@@ -37,33 +41,12 @@ import {
   generateInitialUsersAndEntities,
   generateInitialBillsAndFinances,
   generateInitialAttendance,
-  generateInitialGrades
+  generateInitialGrades,
+  generateInitialReportCards,
+  createDefaultDatabaseState
 } from '../data/initialData';
 
-export interface DatabaseState {
-  settings: SiteSettings;
-  users: User[];
-  teachers: TeacherProfile[];
-  parents: ParentProfile[];
-  students: Student[];
-  classes: ClassItem[];
-  attendance: AttendanceRecord[];
-  academicNotes: AcademicNote[];
-  schedules: ScheduleItem[];
-  news: NewsItem[];
-  announcements: AnnouncementItem[];
-  admissions: AdmissionApplicant[];
-  gallery: GalleryItem[];
-  paymentTypes: PaymentType[];
-  bills: StudentBill[];
-  paymentReports: PaymentReport[];
-  receipts: PaymentReceipt[];
-  paymentAuditLogs: PaymentAuditLog[];
-  contactMessages: ContactMessage[];
-  activityLogs: ActivityLog[];
-}
-
-const STORAGE_KEY = 'mdtu_nurul_hidayah_db_v4';
+const STORAGE_KEY = 'mdtu_nurul_hidayah_db_v6';
 const EVENT_NAME = 'mdtu_db_update';
 
 const CARTOON_USTADZ_CLEAN = '/src/assets/images/cartoon_ustadz_clean_1792552709074.jpg';
@@ -75,93 +58,167 @@ const CARTOON_USTADZ_YOUNG = '/src/assets/images/cartoon_ustadz_young_1792552747
 const failedLoginAttempts: Record<string, { count: number; lockedUntil: number }> = {};
 
 function initDefaultDatabase(): DatabaseState {
-  const { users, parents, students } = generateInitialUsersAndEntities();
-  const { bills, reports, receipts, auditLogs } = generateInitialBillsAndFinances(students, parents);
-  const attendance = generateInitialAttendance(students);
-  const academicNotes = generateInitialGrades(students);
-
-  return {
-    settings: INITIAL_SITE_SETTINGS,
-    users,
-    teachers: INITIAL_TEACHERS,
-    parents,
-    students,
-    classes: INITIAL_CLASSES,
-    attendance,
-    academicNotes,
-    schedules: INITIAL_SCHEDULES,
-    news: INITIAL_NEWS,
-    announcements: INITIAL_ANNOUNCEMENTS,
-    admissions: INITIAL_ADMISSIONS,
-    gallery: INITIAL_GALLERY,
-    paymentTypes: INITIAL_PAYMENT_TYPES,
-    bills,
-    paymentReports: reports,
-    receipts,
-    paymentAuditLogs: auditLogs,
-    contactMessages: INITIAL_CONTACT_MESSAGES,
-    activityLogs: INITIAL_ACTIVITY_LOGS
-  };
+  return createDefaultDatabaseState();
 }
 
 class StorageService {
   private cache: DatabaseState | null = null;
+  private isSyncing = false;
+  private isPushing = false;
+  private sseConnected = false;
+  private lastServerVersion = 0;
+  private pollInterval: any = null;
+  private eventSource: EventSource | null = null;
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      this.initSync();
+    }
+  }
+
+  private async initSync() {
+    // 1. Fetch latest centralized state from server
+    await this.fetchFromServer();
+
+    // 2. Setup Server-Sent Events (SSE) for instant cross-device updates
+    this.setupSSE();
+
+    // 3. Fallback polling every 5 seconds in case of network or tab sleep
+    if (!this.pollInterval && typeof window !== 'undefined') {
+      this.pollInterval = setInterval(() => {
+        this.checkServerVersion();
+      }, 5000);
+    }
+  }
+
+  private setupSSE() {
+    if (typeof window === 'undefined' || !window.EventSource) return;
+
+    try {
+      if (this.eventSource) {
+        this.eventSource.close();
+      }
+
+      const es = new EventSource('/api/events');
+      this.eventSource = es;
+
+      es.onopen = () => {
+        this.sseConnected = true;
+      };
+
+      es.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data && (data.type === 'DB_UPDATE' || data.type === 'CONNECTED')) {
+            if (data.version && data.version !== this.lastServerVersion) {
+              this.fetchFromServer();
+            }
+          }
+        } catch {
+          // ignore heartbeat
+        }
+      };
+
+      es.onerror = () => {
+        this.sseConnected = false;
+      };
+    } catch (e) {
+      console.warn('[StorageService] SSE setup skipped:', e);
+    }
+  }
+
+  private async checkServerVersion() {
+    if (typeof window === 'undefined' || this.isSyncing) return;
+    try {
+      const res = await fetch('/api/version');
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.version && json.version !== this.lastServerVersion) {
+          await this.fetchFromServer();
+        }
+      }
+    } catch {
+      // offline or server restarting
+    }
+  }
+
+  public async fetchFromServer(): Promise<boolean> {
+    if (typeof window === 'undefined' || this.isSyncing) return false;
+    this.isSyncing = true;
+    try {
+      const res = await fetch('/api/state');
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.success && json.data) {
+          this.lastServerVersion = json.version || Date.now();
+          this.cache = json.data;
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(json.data));
+          } catch (err) {
+            console.warn('[StorageService] LocalStorage persist warning:', err);
+          }
+          this.notifySubscribers();
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn('[StorageService] Fetching from server fallback to cache:', e);
+    } finally {
+      this.isSyncing = false;
+    }
+    return false;
+  }
+
+  private async pushToServer(state: DatabaseState) {
+    if (typeof window === 'undefined' || this.isPushing) return;
+    this.isPushing = true;
+    try {
+      const res = await fetch('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: state })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.version) {
+          this.lastServerVersion = json.version;
+        }
+      }
+    } catch (e) {
+      console.warn('[StorageService] Failed to push state to server:', e);
+    } finally {
+      this.isPushing = false;
+    }
+  }
+
+  private notifySubscribers() {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event(EVENT_NAME));
+    }
+  }
+
+  public isConnectedToServer(): boolean {
+    return this.sseConnected;
+  }
+
+  public async syncNow(): Promise<boolean> {
+    return await this.fetchFromServer();
+  }
 
   private load(): DatabaseState {
     if (this.cache) return this.cache;
 
     try {
-      // Check v4 or migrate from prior keys
+      // Check v6 or migrate from prior keys
       let raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) {
-        raw = localStorage.getItem('mdtu_nurul_hidayah_db_v3') || localStorage.getItem('mdtu_nurul_hidayah_db_v2') || localStorage.getItem('mdtu_nurul_hidayah_db_v1');
+        raw = localStorage.getItem('mdtu_nurul_hidayah_db_v5') || localStorage.getItem('mdtu_nurul_hidayah_db_v4') || localStorage.getItem('mdtu_nurul_hidayah_db_v3') || localStorage.getItem('mdtu_nurul_hidayah_db_v2') || localStorage.getItem('mdtu_nurul_hidayah_db_v1');
       }
 
       if (raw) {
         const parsed = JSON.parse(raw) as DatabaseState;
         if (parsed) {
           this.cache = parsed;
-          // Ensure all teacher photos are strictly replaced with clean cartoon avatars
-          let mutated = false;
-          if (!this.cache.settings?.headmasterPhotoUrl || !this.cache.settings.headmasterPhotoUrl.includes('cartoon_ustadz_clean')) {
-            if (this.cache.settings) {
-              this.cache.settings.headmasterPhotoUrl = CARTOON_USTADZ_CLEAN;
-              mutated = true;
-            }
-          }
-
-          this.cache.teachers?.forEach(t => {
-            const lower = (t.title || t.fullName || '').toLowerCase();
-            if (lower.includes('ade') || lower.includes('kepala')) {
-              if (t.photoUrl !== CARTOON_USTADZ_CLEAN) {
-                t.photoUrl = CARTOON_USTADZ_CLEAN;
-                mutated = true;
-              }
-            } else if (lower.includes('siti') || lower.includes('saadah')) {
-              if (t.photoUrl !== CARTOON_USTADZAH_CLEAN) {
-                t.photoUrl = CARTOON_USTADZAH_CLEAN;
-                mutated = true;
-              }
-            } else if (lower.includes('fitri') || lower.includes('hermawati')) {
-              if (t.photoUrl !== CARTOON_USTADZAH_SOFT) {
-                t.photoUrl = CARTOON_USTADZAH_SOFT;
-                mutated = true;
-              }
-            } else if (lower.includes('azmi') || lower.includes('nurjamil')) {
-              if (t.photoUrl !== CARTOON_USTADZ_YOUNG) {
-                t.photoUrl = CARTOON_USTADZ_YOUNG;
-                mutated = true;
-              }
-            } else {
-              const isFem = lower.includes('usth') || lower.includes('ustadzah');
-              t.photoUrl = isFem ? CARTOON_USTADZAH_CLEAN : CARTOON_USTADZ_CLEAN;
-              mutated = true;
-            }
-          });
-
-          if (mutated) {
-            this.save(this.cache);
-          }
           return this.cache;
         }
       }
@@ -169,7 +226,7 @@ class StorageService {
       console.error('Failed to parse database from localStorage:', e);
     }
 
-    const initial = initDefaultDatabase();
+    const initial = createDefaultDatabaseState();
     this.save(initial);
     return initial;
   }
@@ -178,10 +235,11 @@ class StorageService {
     this.cache = state;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      window.dispatchEvent(new Event(EVENT_NAME));
+      this.notifySubscribers();
     } catch (e) {
       console.error('Failed to persist to localStorage:', e);
     }
+    this.pushToServer(state);
   }
 
   public subscribe(callback: () => void): () => void {
@@ -456,6 +514,29 @@ class StorageService {
     return true;
   }
 
+  public deleteStudentPermanently(id: string, actorName = 'Admin'): boolean {
+    const db = this.load();
+    const student = db.students.find(s => s.id === id);
+    if (!student) return false;
+
+    // Remove from students array
+    db.students = db.students.filter(s => s.id !== id);
+
+    // Remove from parent linked students
+    db.parents.forEach(p => {
+      p.studentIds = p.studentIds.filter(stId => stId !== id);
+    });
+
+    // Remove report cards
+    if (db.reportCards) {
+      db.reportCards = db.reportCards.filter(rc => rc.studentId !== id);
+    }
+
+    this.save(db);
+    this.logActivity(actorName, 'admin', 'DELETE_STUDENT_PERMANENT', `Menghapus permanen data santri ${student.fullName} (${student.nis})`);
+    return true;
+  }
+
   // --- PARENTS ---
   public getParents(): ParentProfile[] {
     return this.load().parents;
@@ -480,13 +561,158 @@ class StorageService {
         user.fullName = parent.fullName;
         user.phone = parent.phone;
       }
+      // Also update linked students parentId
+      if (parent.studentIds && parent.studentIds.length > 0) {
+        db.students.forEach(s => {
+          if (parent.studentIds.includes(s.id)) {
+            s.parentId = parent.id;
+          }
+        });
+      }
       this.logActivity(actorName, 'admin', 'UPDATE_PARENT', `Memperbarui profil orang tua/wali ${parent.fullName}`);
     } else {
+      // Ensure user account exists
+      let user = db.users.find(u => u.id === parent.userId);
+      if (!user) {
+        const username = `orangtua_${parent.id.replace('parent_', '')}`;
+        user = {
+          id: parent.userId,
+          username,
+          fullName: parent.fullName,
+          role: 'parent',
+          passwordHash: 'wali123',
+          isActive: true,
+          phone: parent.phone,
+          createdAt: new Date().toISOString()
+        };
+        db.users.push(user);
+      }
       db.parents.push(parent);
+      if (parent.studentIds && parent.studentIds.length > 0) {
+        db.students.forEach(s => {
+          if (parent.studentIds.includes(s.id)) {
+            s.parentId = parent.id;
+          }
+        });
+      }
       this.logActivity(actorName, 'admin', 'ADD_PARENT', `Menambahkan profil orang tua/wali baru ${parent.fullName}`);
     }
     this.save(db);
     return parent;
+  }
+
+  public deleteParent(id: string, actorName = 'Admin'): boolean {
+    const db = this.load();
+    const parent = db.parents.find(p => p.id === id);
+    if (!parent) return false;
+    parent.isActive = false;
+    const user = db.users.find(u => u.id === parent.userId);
+    if (user) user.isActive = false;
+    this.save(db);
+    this.logActivity(actorName, 'admin', 'DEACTIVATE_PARENT', `Menonaktifkan akun orang tua ${parent.fullName}`);
+    return true;
+  }
+
+  public deleteParentPermanently(id: string, actorName = 'Admin'): boolean {
+    const db = this.load();
+    const parent = db.parents.find(p => p.id === id);
+    if (!parent) return false;
+
+    // Remove user account
+    db.users = db.users.filter(u => u.id !== parent.userId);
+
+    // Remove from parents
+    db.parents = db.parents.filter(p => p.id !== id);
+
+    // Unlink students
+    db.students.forEach(s => {
+      if (s.parentId === id) {
+        s.parentId = '';
+      }
+    });
+
+    this.save(db);
+    this.logActivity(actorName, 'admin', 'DELETE_PARENT_PERMANENT', `Menghapus permanen akun orang tua ${parent.fullName}`);
+    return true;
+  }
+
+  // --- DIGITAL REPORT CARDS (RAPORT DIGITAL) ---
+  public getReportCards(filter?: { studentId?: string; classId?: string; semester?: string }): DigitalReportCard[] {
+    const db = this.load();
+    let list = db.reportCards || [];
+    if (filter?.studentId) list = list.filter(r => r.studentId === filter.studentId);
+    if (filter?.classId) list = list.filter(r => r.classId === filter.classId);
+    if (filter?.semester) list = list.filter(r => r.semester === filter.semester);
+    return list;
+  }
+
+  public getReportCardByStudentId(studentId: string, semester?: string): DigitalReportCard | undefined {
+    const db = this.load();
+    const list = db.reportCards || [];
+    if (semester) {
+      return list.find(r => r.studentId === studentId && r.semester === semester);
+    }
+    return list.find(r => r.studentId === studentId);
+  }
+
+  public saveReportCard(report: DigitalReportCard, actorName = 'Admin'): DigitalReportCard {
+    const db = this.load();
+    if (!db.reportCards) db.reportCards = [];
+    const idx = db.reportCards.findIndex(r => r.id === report.id || (r.studentId === report.studentId && r.semester === report.semester));
+    if (idx >= 0) {
+      db.reportCards[idx] = { ...report, updatedAt: new Date().toISOString(), updatedBy: actorName };
+    } else {
+      db.reportCards.push({ ...report, updatedAt: new Date().toISOString(), updatedBy: actorName });
+    }
+    this.save(db);
+    const student = db.students.find(s => s.id === report.studentId);
+    this.logActivity(actorName, 'admin', 'SAVE_REPORT_CARD', `Menyimpan raport digital santri ${student?.fullName || report.studentId} (${report.semester} ${report.academicYear})`);
+    return report;
+  }
+
+  public deleteReportCard(id: string, actorName = 'Admin'): boolean {
+    const db = this.load();
+    if (!db.reportCards) return false;
+    db.reportCards = db.reportCards.filter(r => r.id !== id);
+    this.save(db);
+    this.logActivity(actorName, 'admin', 'DELETE_REPORT_CARD', `Menghapus data raport digital ID: ${id}`);
+    return true;
+  }
+
+  public updateMonthlySppAmount(newAmount: number, updateExistingPendingBills = false, actorName = 'Admin'): boolean {
+    const db = this.load();
+    if (!db.settings) db.settings = { ...INITIAL_SITE_SETTINGS };
+    db.settings.monthlySppAmount = newAmount;
+
+    // Also update payment type
+    const sppType = db.paymentTypes.find(pt => pt.id === 'pt_spp');
+    if (sppType) {
+      sppType.amount = newAmount;
+    }
+
+    if (updateExistingPendingBills) {
+      db.bills.forEach(b => {
+        if (b.paymentTypeId === 'pt_spp' && b.status === 'Belum Bayar') {
+          b.amount = newAmount;
+          b.remainingAmount = newAmount;
+        }
+      });
+    }
+
+    this.save(db);
+    this.logActivity(actorName, 'admin', 'UPDATE_SPP_AMOUNT', `Memperbarui nominal SPP bulanan menjadi Rp ${newAmount.toLocaleString('id-ID')}`);
+    return true;
+  }
+
+
+  public updateStudentByTeacher(studentData: Partial<Student> & { id: string }, teacherName: string): Student | null {
+    const db = this.load();
+    const idx = db.students.findIndex(s => s.id === studentData.id);
+    if (idx === -1) return null;
+    db.students[idx] = { ...db.students[idx], ...studentData };
+    this.save(db);
+    this.logActivity(teacherName, 'teacher', 'UPDATE_STUDENT_BY_TEACHER', `Wali kelas memperbarui data santri ${db.students[idx].fullName}`);
+    return db.students[idx];
   }
 
   // --- ATTENDANCE ---

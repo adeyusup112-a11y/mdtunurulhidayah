@@ -7,6 +7,7 @@ import { HomePage } from './pages/public/HomePage';
 import { ProfilePage } from './pages/public/ProfilePage';
 import { VisiMisiPage } from './pages/public/VisiMisiPage';
 import { GuruPage } from './pages/public/GuruPage';
+import { JadwalPage } from './pages/public/JadwalPage';
 import { BeritaPage } from './pages/public/BeritaPage';
 import { PPDBPage } from './pages/public/PPDBPage';
 import { GaleriPage } from './pages/public/GaleriPage';
@@ -17,9 +18,21 @@ import { ParentDashboard } from './pages/portal/parent/ParentDashboard';
 import { AdminDashboard } from './pages/portal/admin/AdminDashboard';
 import { NewsItem, UserRole } from './types';
 
+const VALID_TABS = ['beranda', 'profil', 'visi-misi', 'guru', 'jadwal', 'berita', 'ppdb', 'galeri', 'kontak', 'portal'];
+
+function getInitialTab(): string {
+  if (typeof window !== 'undefined') {
+    const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+    if (VALID_TABS.includes(hash)) {
+      return hash;
+    }
+  }
+  return 'beranda';
+}
+
 function MainAppContent() {
   const { currentUser, currentRole } = useAuth();
-  const [activeTab, setActiveTab] = useState<string>('beranda');
+  const [activeTab, setActiveTabState] = useState<string>(getInitialTab);
   const [portalDefaultRole, setPortalDefaultRole] = useState<UserRole | undefined>(undefined);
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
 
@@ -29,6 +42,15 @@ function MainAppContent() {
   const [announcements, setAnnouncements] = useState(storageService.getAnnouncements());
   const [gallery, setGallery] = useState(storageService.getGallery());
   const [teachers, setTeachers] = useState(storageService.getTeachers());
+  const [schedules, setSchedules] = useState(storageService.getSchedules());
+  const [classes, setClasses] = useState(storageService.getClasses());
+
+  const setActiveTab = (tab: string) => {
+    setActiveTabState(tab);
+    if (typeof window !== 'undefined') {
+      window.location.hash = tab;
+    }
+  };
 
   const refreshPublicData = () => {
     setSettings(storageService.getSiteSettings());
@@ -36,12 +58,26 @@ function MainAppContent() {
     setAnnouncements(storageService.getAnnouncements());
     setGallery(storageService.getGallery());
     setTeachers(storageService.getTeachers());
+    setSchedules(storageService.getSchedules());
+    setClasses(storageService.getClasses());
   };
 
   useEffect(() => {
     refreshPublicData();
     const unsub = storageService.subscribe(() => refreshPublicData());
-    return unsub;
+
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (VALID_TABS.includes(hash)) {
+        setActiveTabState(hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+
+    return () => {
+      unsub();
+      window.removeEventListener('hashchange', handleHashChange);
+    };
   }, []);
 
   // When user logs in, automatically switch activeTab to 'portal'
@@ -109,6 +145,8 @@ function MainAppContent() {
           <VisiMisiPage settings={settings} />
         ) : activeTab === 'guru' ? (
           <GuruPage teachers={teachers} />
+        ) : activeTab === 'jadwal' ? (
+          <JadwalPage settings={settings} schedules={schedules} classes={classes} teachers={teachers} />
         ) : activeTab === 'berita' ? (
           <BeritaPage
             news={news}

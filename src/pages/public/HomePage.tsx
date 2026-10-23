@@ -62,8 +62,15 @@ export const HomePage: React.FC<HomePageProps> = ({
                   <ArrowRight className="w-4 h-4" />
                 </button>
                 <button
+                  onClick={() => onNavigate('jadwal')}
+                  className="px-5 py-3.5 bg-emerald-900/90 hover:bg-emerald-800 text-emerald-100 hover:text-white font-medium rounded-lg border border-emerald-700/80 hover:border-emerald-500 transition-all text-sm inline-flex items-center gap-2 cursor-pointer"
+                >
+                  <Calendar className="w-4 h-4 text-amber-300" />
+                  <span>Jadwal Pelajaran</span>
+                </button>
+                <button
                   onClick={() => onOpenPortal()}
-                  className="px-6 py-3.5 bg-emerald-900/80 hover:bg-emerald-800 text-white font-semibold rounded-lg border border-emerald-700/80 hover:border-emerald-500 transition-all text-sm inline-flex items-center gap-2 cursor-pointer"
+                  className="px-6 py-3.5 bg-emerald-950/80 hover:bg-emerald-900 text-white font-semibold rounded-lg border border-emerald-700/80 hover:border-emerald-500 transition-all text-sm inline-flex items-center gap-2 cursor-pointer"
                 >
                   <span>Akses Portal Masuk</span>
                   <ChevronRight className="w-4 h-4 text-amber-300" />
@@ -77,7 +84,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                   <p className="text-emerald-300/80">Jenjang Ula 1 - 4</p>
                 </div>
                 <div>
-                  <div className="text-xl sm:text-2xl font-bold font-mono text-white">40+ Santri</div>
+                  <div className="text-xl sm:text-2xl font-bold font-mono text-white">60 Santri</div>
                   <p className="text-emerald-300/80">Aktif Terdaftar</p>
                 </div>
                 <div>

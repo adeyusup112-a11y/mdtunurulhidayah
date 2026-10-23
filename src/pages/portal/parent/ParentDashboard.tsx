@@ -11,9 +11,11 @@ import {
   StudentBill,
   PaymentReport,
   PaymentReceipt,
-  AnnouncementItem
+  AnnouncementItem,
+  DigitalReportCard
 } from '../../../types';
 import { ReceiptModal } from '../../../components/receipt/ReceiptModal';
+import { DigitalReportCardView } from '../../../components/raport/DigitalReportCardView';
 import {
   User,
   BookOpen,
@@ -28,13 +30,15 @@ import {
   Clock,
   Phone,
   Eye,
-  ArrowRight
+  ArrowRight,
+  Award
 } from 'lucide-react';
 
 export const ParentDashboard: React.FC = () => {
   const { currentUser, parentProfile, selectedChildId, setSelectedChildId, changePassword } = useAuth();
 
-  const [activeMenu, setActiveMenu] = useState<'ringkasan' | 'tagihan' | 'absensi' | 'nilai' | 'jadwal' | 'pengumuman' | 'profil'>('ringkasan');
+  const [activeMenu, setActiveMenu] = useState<'ringkasan' | 'tagihan' | 'absensi' | 'nilai' | 'raport' | 'jadwal' | 'pengumuman' | 'profil'>('ringkasan');
+  const [reportCard, setReportCard] = useState<DigitalReportCard | null>(null);
 
   // Children list
   const [children, setChildren] = useState<Student[]>([]);
@@ -53,7 +57,7 @@ export const ParentDashboard: React.FC = () => {
   // Payment upload state
   const [selectedBillForPay, setSelectedBillForPay] = useState<StudentBill | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'Transfer Bank' | 'Tunai'>('Transfer Bank');
-  const [bankName, setBankName] = useState('Bank BRI (Simpedes)');
+  const [bankName, setBankName] = useState('DANA - 081324168105 (Azmi M Nurjamil)');
   const [senderAccountName, setSenderAccountName] = useState('');
   const [referenceNumber, setReferenceNumber] = useState('');
   const [proofNote, setProofNote] = useState('');
@@ -106,6 +110,9 @@ export const ParentDashboard: React.FC = () => {
 
       const stReceipts = storageService.getReceiptsByStudentId(child.id);
       setReceipts(stReceipts);
+
+      const stReport = storageService.getReportCardByStudentId(child.id);
+      setReportCard(stReport || null);
     }
   };
 
@@ -256,6 +263,15 @@ export const ParentDashboard: React.FC = () => {
           }`}
         >
           Nilai & Hafalan Qur'an
+        </button>
+        <button
+          onClick={() => setActiveMenu('raport')}
+          className={`px-4 py-2 text-xs font-bold rounded-lg whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 ${
+            activeMenu === 'raport' ? 'bg-emerald-900 text-white shadow-xs' : 'text-stone-700 bg-emerald-50/70 hover:bg-emerald-100/70 hover:text-emerald-950'
+          }`}
+        >
+          <Award className={`w-3.5 h-3.5 ${activeMenu === 'raport' ? 'text-amber-400' : 'text-emerald-700'}`} />
+          <span>Raport Digital</span>
         </button>
         <button
           onClick={() => setActiveMenu('jadwal')}
@@ -480,10 +496,43 @@ export const ParentDashboard: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-950 space-y-1">
-                  <span className="font-bold block">Rekening Resmi MDTU Nurul Hidayah:</span>
-                  <p>Bank BRI (Simpedes): <strong>4182-01-023948-53-1</strong> a.n MDTU NURUL HIDAYAH</p>
-                  <p>Bank BSI (Syariah): <strong>7218391045</strong> a.n MDTU NURUL HIDAYAH</p>
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-950 space-y-2">
+                  <span className="font-bold block text-emerald-900">Rekening Resmi Pembayaran MDTU Nurul Hidayah:</span>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 p-2 bg-white rounded-lg border border-emerald-100">
+                    <div>
+                      <span className="font-semibold text-stone-900 block">DANA: <strong className="font-mono text-emerald-800">081324168105</strong></span>
+                      <span className="text-[11px] text-stone-500">a.n. Azmi M Nurjamil</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText('081324168105');
+                        setSuccessMsg('Nomor DANA (081324168105) berhasil disalin ke papan klip.');
+                        setTimeout(() => setSuccessMsg(''), 3000);
+                      }}
+                      className="text-[11px] px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-semibold rounded cursor-pointer"
+                    >
+                      Salin No. DANA
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 p-2 bg-white rounded-lg border border-emerald-100">
+                    <div>
+                      <span className="font-semibold text-stone-900 block">Bank BRI: <strong className="font-mono text-emerald-800">4056 0101 3846 503</strong></span>
+                      <span className="text-[11px] text-stone-500">a.n. MDTU Nurul Hidayah</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText('405601013846503');
+                        setSuccessMsg('Nomor Rekening BRI (4056 0101 3846 503) berhasil disalin ke papan klip.');
+                        setTimeout(() => setSuccessMsg(''), 3000);
+                      }}
+                      className="text-[11px] px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-semibold rounded cursor-pointer"
+                    >
+                      Salin No. Rek BRI
+                    </button>
+                  </div>
                 </div>
 
                 <form onSubmit={handlePaySubmit} className="space-y-3 text-xs">
@@ -494,7 +543,7 @@ export const ParentDashboard: React.FC = () => {
                       onChange={(e) => setPaymentMethod(e.target.value as 'Transfer Bank' | 'Tunai')}
                       className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none bg-white font-medium"
                     >
-                      <option value="Transfer Bank">Transfer Bank / M-Banking / ATM</option>
+                      <option value="Transfer Bank">Transfer / E-Wallet (DANA & BRI)</option>
                       <option value="Tunai">Tunai di Kantor Madrasah</option>
                     </select>
                   </div>
@@ -502,14 +551,14 @@ export const ParentDashboard: React.FC = () => {
                   {paymentMethod === 'Transfer Bank' && (
                     <>
                       <div className="space-y-1">
-                        <label className="font-semibold text-stone-700">Rekening Tujuan</label>
+                        <label className="font-semibold text-stone-700">Pilihan Rekening Tujuan</label>
                         <select
                           value={bankName}
                           onChange={(e) => setBankName(e.target.value)}
-                          className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none bg-white"
+                          className="w-full px-3 py-2 border border-stone-300 rounded-lg outline-none bg-white font-medium"
                         >
-                          <option value="Bank BRI (Simpedes)">Bank BRI (Simpedes) - 4182-01-023948-53-1</option>
-                          <option value="Bank BSI (Syariah)">Bank BSI (Syariah) - 7218391045</option>
+                          <option value="DANA - 081324168105 (Azmi M Nurjamil)">DANA - 081324168105 (a.n. Azmi M Nurjamil)</option>
+                          <option value="Bank BRI - 4056 0101 3846 503">Bank BRI - 4056 0101 3846 503 (a.n. MDTU Nurul Hidayah)</option>
                         </select>
                       </div>
 
@@ -677,6 +726,27 @@ export const ParentDashboard: React.FC = () => {
               </p>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Menu: Raport Digital */}
+      {activeMenu === 'raport' && activeStudent && (
+        <div className="space-y-6">
+          {reportCard ? (
+            <DigitalReportCardView
+              report={reportCard}
+              student={activeStudent}
+              classItem={studentClass || undefined}
+            />
+          ) : (
+            <div className="p-12 text-center bg-white rounded-2xl border border-stone-200 space-y-3">
+              <Award className="w-12 h-12 text-stone-300 mx-auto" />
+              <h3 className="font-bold text-stone-800 text-base">Raport Digital Sedang Disiapkan</h3>
+              <p className="text-xs text-stone-500 max-w-md mx-auto leading-relaxed">
+                Raport digital untuk ananda <span className="font-bold text-stone-800">{activeStudent.fullName}</span> sedang dalam proses penginputan nilai dan pengesahan oleh Wali Kelas ({waliKelas?.title || 'Wali Kelas'}) dan Kepala MDTU Nurul Hidayah.
+              </p>
+            </div>
+          )}
         </div>
       )}
 

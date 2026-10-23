@@ -102,8 +102,8 @@ export interface AcademicNote {
 export interface ScheduleItem {
   id: string;
   classId: string;
-  day: 'Senin' | 'Selasa' | 'Rabu' | 'Kamis' | 'Jumat' | 'Sabtu';
-  timeSlot: string; // e.g. '14:00 - 15:00'
+  day: 'Senin' | 'Selasa' | 'Rabu' | 'Kamis' | 'Jumat' | 'Sabtu' | 'Minggu';
+  timeSlot: string; // e.g. '13:00 - 14:15'
   subject: string;
   teacherId: string;
 }
@@ -263,6 +263,8 @@ export interface SiteSettings {
   }[];
   ppdbActive: boolean;
   ppdbRequirements: string[];
+  studyHours?: string; // 'Hari Senin - Minggu pukul 13.00 - 16.00 WIB (Jumat Libur)'
+  monthlySppAmount?: number; // e.g. 25000 or 35000
 }
 
 export interface ContactMessage {
@@ -285,4 +287,85 @@ export interface ActivityLog {
   action: string;
   details: string;
   timestamp: string;
+}
+
+export interface SubjectGrade {
+  subject: string; // e.g. 'Al-Qur\'an & Tahsin', 'Tajwid & Tahfidz', 'Fiqih Ibadah', 'Aqidah & Akhlak', 'Bahasa Arab', 'Tarikh Islam', 'Praktik Shalat & Doa'
+  kkm: number; // e.g. 75
+  score: number; // 0 - 100
+  gradeLetter: 'A' | 'B' | 'C' | 'D';
+  predicate: 'Sangat Baik' | 'Baik' | 'Cukup' | 'Perlu Bimbingan';
+  description: string;
+}
+
+export interface DigitalReportCard {
+  id: string;
+  studentId: string;
+  classId: string;
+  academicYear: string; // e.g. '2025/2026'
+  semester: 'Ganjil' | 'Genap';
+  issueDate: string; // e.g. '2026-06-20'
+  place: string; // 'Rajadesa'
+  
+  // Mata Pelajaran Nilai
+  grades: SubjectGrade[];
+
+  // Tahfidz & Al-Qur'an
+  tahfidzProgress: string; // e.g. 'Juz 30 (Surat An-Naba s.d An-Nas)'
+  tahfidzScore: number;
+  tahfidzPredicate: 'Mumtaz (Istimewa)' | 'Jayyid Jiddan (Sangat Baik)' | 'Jayyid (Baik)' | 'Maqbul (Cukup)';
+  tajwidQuality: string; // e.g. 'Makharijul huruf fasih, dengung & ghunnah tepat'
+
+  // Karakter & Akhlak
+  characterValues: {
+    adabDanAkhlak: 'A' | 'B' | 'C';
+    kedisiplinan: 'A' | 'B' | 'C';
+    kebersihanKerapian: 'A' | 'B' | 'C';
+    keaktifanIbadah: 'A' | 'B' | 'C';
+  };
+
+  // Kehadiran Semester
+  attendance: {
+    hadir: number;
+    sakit: number;
+    izin: number;
+    alpa: number;
+  };
+
+  // Catatan & Keputusan
+  teacherNotes: string;
+  promotionStatus: 'Naik ke Kelas Berikutnya' | 'Lulus dari MDTU Nurul Hidayah' | 'Tinggal di Kelas' | 'Belum Ditentukan';
+  promotedToClass?: string;
+
+  // Pejabat & Pengesahan
+  headmasterName: string;
+  headmasterTitle: string;
+  waliKelasName: string;
+
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export interface DatabaseState {
+  settings: SiteSettings;
+  users: User[];
+  teachers: TeacherProfile[];
+  parents: ParentProfile[];
+  students: Student[];
+  classes: ClassItem[];
+  attendance: AttendanceRecord[];
+  academicNotes: AcademicNote[];
+  schedules: ScheduleItem[];
+  news: NewsItem[];
+  announcements: AnnouncementItem[];
+  admissions: AdmissionApplicant[];
+  gallery: GalleryItem[];
+  paymentTypes: PaymentType[];
+  bills: StudentBill[];
+  paymentReports: PaymentReport[];
+  receipts: PaymentReceipt[];
+  paymentAuditLogs: PaymentAuditLog[];
+  contactMessages: ContactMessage[];
+  activityLogs: ActivityLog[];
+  reportCards: DigitalReportCard[];
 }

@@ -17,6 +17,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenP
     { id: 'profil', label: 'Profil Lembaga' },
     { id: 'visi-misi', label: 'Visi & Misi' },
     { id: 'guru', label: 'Dewan Guru' },
+    { id: 'jadwal', label: 'Jadwal Pelajaran' },
     { id: 'berita', label: 'Berita & Pengumuman' },
     { id: 'ppdb', label: 'Pendaftaran (PPDB)' },
     { id: 'galeri', label: 'Galeri' },

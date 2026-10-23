@@ -83,6 +83,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenPortal }) => {
               </li>
               <li>
                 <button
+                  onClick={() => onNavigate('jadwal')}
+                  className="hover:text-amber-300 transition-colors cursor-pointer"
+                >
+                  Jadwal Pelajaran Santri
+                </button>
+              </li>
+              <li>
+                <button
                   onClick={() => onNavigate('ppdb')}
                   className="hover:text-amber-300 transition-colors cursor-pointer"
                 >
@@ -126,7 +134,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenPortal }) => {
               </div>
               <div className="flex items-center gap-2.5">
                 <Clock className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Jam Belajar: Senin – Sabtu, 14:00 – 16:30 WIB</span>
+                <span>Jam Belajar: Senin – Minggu, 13:00 – 16:00 WIB (Jumat Libur)</span>
               </div>
             </div>
           </div>
